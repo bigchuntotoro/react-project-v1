@@ -237,3 +237,5 @@ git rm -r --cached .idea
 
 # 삭제 상태를 커밋
 git commit -m "Chore: .gitignore 적용 및 불필요한 빌드/설정 파일 추적 제거"
+
+git push origin main

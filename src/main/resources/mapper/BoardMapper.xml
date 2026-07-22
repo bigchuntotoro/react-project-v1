@@ -4,7 +4,7 @@
 
 <mapper namespace="com.example.board.mapper.BoardMapper">
 
-    <!-- 검색 조건 공통 SQL -->
+    <!-- 동적 검색 조건 공통 SQL -->
     <sql id="search">
         <if test="keyword != null and keyword != ''">
             <choose>
@@ -25,71 +25,90 @@
         </if>
     </sql>
 
-    <!-- 게시글 목록 조회 (페이징 + 검색) -->
+    <!-- 1. 게시글 목록 조회 (페이징 + 검색) -->
     <select id="selectBoardList" resultType="com.example.board.dto.BoardDto">
-        SELECT board_id, title, writer, read_cnt, created_at
-        FROM board
+        SELECT
+        board_id,
+        title,
+        writer,
+        read_cnt AS read_count,
+        created_at
+        FROM reactboard
         WHERE 1=1
         <include refid="search"/>
         ORDER BY board_id DESC
-        LIMIT #{offset}, #{recordSize}
+        LIMIT #{recordSize} OFFSET #{offset}
     </select>
 
-    <!-- 게시글 총 개수 -->
+    <!-- 2. 게시글 총 개수 (페이징용) -->
     <select id="selectBoardCount" resultType="int">
         SELECT COUNT(*)
-        FROM board
+        FROM reactboard
         WHERE 1=1
         <include refid="search"/>
     </select>
 
-    <!-- 게시글 상세 조회 -->
+    <!-- 3. 게시글 상세 조회 -->
     <select id="selectBoardById" resultType="com.example.board.dto.BoardDto">
-        SELECT board_id, title, content, writer, read_cnt, created_at
-        FROM board
+        SELECT
+        board_id,
+        title,
+        content,
+        writer,
+        read_cnt AS read_count,
+        created_at
+        FROM reactboard
         WHERE board_id = #{boardId}
     </select>
 
-    <!-- 첨부파일 목록 조회 -->
+    <!-- 4. 첨부파일 목록 조회 -->
     <select id="selectFilesByBoardId" resultType="com.example.board.dto.BoardFileDto">
-        SELECT file_id, board_id, original_name, save_name, file_size
-        FROM board_file
+        SELECT
+        file_id,
+        board_id,
+        original_name,
+        save_name AS saved_name,
+        file_size
+        FROM reactboard_file
         WHERE board_id = #{boardId}
     </select>
 
-    <!-- 게시글 등록 (생성된 ID 반환) -->
+    <!-- 5. 게시글 등록 (Auto Increment PK 반환) -->
     <insert id="insertBoard" useGeneratedKeys="true" keyProperty="boardId">
-        INSERT INTO board (title, content, writer)
+        INSERT INTO reactboard (title, content, writer)
         VALUES (#{title}, #{content}, #{writer})
     </insert>
 
-    <!-- 파일 정보 등록 -->
+    <!-- 6. 파일 정보 다중 등록 (Bulk Insert) -->
     <insert id="insertBoardFiles">
-        INSERT INTO board_file (board_id, original_name, save_name, file_size)
+        INSERT INTO reactboard_file (board_id, original_name, save_name, file_size)
         VALUES
         <foreach collection="list" item="file" separator=",">
-            (#{file.boardId}, #{file.originalName}, #{file.saveName}, #{file.fileSize})
+            (#{file.boardId}, #{file.originalName}, #{file.savedName}, #{file.fileSize})
         </foreach>
     </insert>
 
-    <!-- 게시글 수정 -->
+    <!-- 7. 게시글 수정 -->
     <update id="updateBoard">
-        UPDATE board
+        UPDATE reactboard
         SET title = #{title}, content = #{content}
         WHERE board_id = #{boardId}
     </update>
 
-    <!-- 조회수 증가 -->
+    <!-- 8. 조회수 1 증가 -->
     <update id="updateReadCount">
-        UPDATE board SET read_cnt = read_cnt + 1 WHERE board_id = #{boardId}
+        UPDATE reactboard
+        SET read_cnt = read_cnt + 1
+        WHERE board_id = #{boardId}
     </update>
 
-    <!-- 게시글 삭제 -->
+    <!-- 9. 게시글 삭제 -->
     <delete id="deleteBoard">
-        DELETE FROM board WHERE board_id = #{boardId}
+        DELETE FROM board
+        WHERE board_id = #{boardId}
     </delete>
 
-    <!-- 특정 파일 삭제 -->
+    <!-- 10. 특정 파일 ID 목록 삭제 -->
     <delete id="deleteFilesByIds">
         DELETE FROM board_file
         WHERE file_id IN
@@ -97,4 +116,5 @@
             #{id}
         </foreach>
     </delete>
+
 </mapper>

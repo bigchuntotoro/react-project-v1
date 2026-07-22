@@ -1,5 +1,6 @@
 com\example\board\dto\BoardFileDto.class
 com\example\board\service\BoardService.class
+com\example\board\service\BoardServiceImpl.class
 com\example\board\controller\BoardController.class
 com\example\board\dto\SearchDto.class
 com\example\board\DemoApplication.class

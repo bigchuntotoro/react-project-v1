@@ -102,26 +102,22 @@ CREATE TABLE board_file (
 
 ## ⚙️ 설정 및 빌드 가이드 (Setup & Build)
 
-### 1. 환경 설정 (`src/main/resources/application.yml`)
-```yaml
-server:
-  port: 8080
+### 1. 환경 설정 (`src/main/resources/application.properties`)
+```properties
+spring.application.name=demo
+spring.datasource.driver-class-name=org.mariadb.jdbc.Driver
+spring.datasource.url=jdbc:mariadb://localhost:3306/board_db
+spring.datasource.username=root
+spring.datasource.password=totoro
 
-spring:
-  datasource:
-    driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://localhost:3306/your_db_name
-    username: your_username
-    password: your_password
+mybatis.mapper-locations=classpath:mappers/**/*.xml
+mybatis.configuration.map-underscore-to-camel-case=true
 
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 50MB
-
-mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.example.board.dto
+logging.level.com.example.demo.mapper=debug
+logging.level.org.mybatis=debug
+logging.level.java.sql.Connection=debug
+logging.level.java.sql.Statement=debug
+logging.level.java.sql.PreparedStatement=debug
 ```
 
 ### 2. 개발 환경 실행 (Development Mode)

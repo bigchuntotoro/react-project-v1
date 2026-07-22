@@ -239,4 +239,4 @@ git rm -rf --cached src/main/resources/static
 
 # 2. 커밋 및 푸시
 git commit -m "Chore: Force remove ignored files"
-git push origin 현재브랜치명
+git push origin main

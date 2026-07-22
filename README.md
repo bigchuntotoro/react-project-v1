@@ -76,7 +76,7 @@ my-board-project/
 
 ```sql
 -- 게시글 테이블
-CREATE TABLE board (
+CREATE TABLE reactboard (
     board_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     content TEXT NOT NULL,
@@ -87,14 +87,14 @@ CREATE TABLE board (
 );
 
 -- 첨부파일 테이블 (1:N 관계, 최대 5개)
-CREATE TABLE board_file (
+CREATE TABLE reactboard_file (
     file_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     board_id BIGINT NOT NULL,
     original_name VARCHAR(255) NOT NULL,
     save_name VARCHAR(255) NOT NULL,
     file_size BIGINT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_board_file FOREIGN KEY (board_id) REFERENCES board(board_id) ON DELETE CASCADE
+    CONSTRAINT fk_reactboard_file FOREIGN KEY (board_id) REFERENCES reactboard(board_id) ON DELETE CASCADE
 );
 
 CREATE DATABASE IF NOT EXISTS board_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;

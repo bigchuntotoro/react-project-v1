@@ -12,10 +12,19 @@ function BoardList() {
   const pageSize = 10; // 한 페이지 당 게시글 수
   const pageGroupSize = 10; // 한 번에 노출할 페이지 버튼 수
 
-  const fetchList = async (targetPage = 1) => {
+  // 🔄 fetchList에서 전달받은 override 값이 있으면 해당 값을 우선 사용 (State 비동기 이슈 방지)
+  const fetchList = async (
+    targetPage = 1,
+    overrideSearchType = searchType,
+    overrideKeyword = keyword,
+  ) => {
     try {
       const res = await axios.get("/api/boards", {
-        params: { page: targetPage, searchType, keyword },
+        params: {
+          page: targetPage,
+          searchType: overrideSearchType,
+          keyword: overrideKeyword,
+        },
       });
       setData(res.data);
       setPage(targetPage);
@@ -27,6 +36,13 @@ function BoardList() {
   useEffect(() => {
     fetchList(1);
   }, []);
+
+  // 🔄 검색 초기화 함수
+  const handleReset = () => {
+    setSearchType("title");
+    setKeyword("");
+    fetchList(1, "title", ""); // 초기화된 값으로 1페이지 다시 요청
+  };
 
   // 총 페이지 수 계산
   const totalPages = Math.ceil((data.totalCount || 0) / pageSize);
@@ -89,6 +105,15 @@ function BoardList() {
 
         <button onClick={() => fetchList(1)} style={styles.searchBtn}>
           검색
+        </button>
+
+        {/* 🔄 초기화 버튼 */}
+        <button
+          onClick={handleReset}
+          style={styles.resetBtn}
+          title="검색 조건 초기화"
+        >
+          🔄 초기화
         </button>
       </div>
 
@@ -164,7 +189,6 @@ function BoardList() {
       {/* 🔢 10개 단위 페이징 영역 */}
       {totalPages > 0 && (
         <div style={styles.pagination}>
-          {/* 맨 처음 페이지로 이동 (<<) */}
           <button
             disabled={page === 1}
             onClick={() => fetchList(1)}
@@ -174,7 +198,6 @@ function BoardList() {
             &lt;&lt;
           </button>
 
-          {/* 이전 10개 그룹으로 이동 (<) */}
           <button
             disabled={startPage === 1}
             onClick={() => fetchList(startPage - 1)}
@@ -184,7 +207,6 @@ function BoardList() {
             &lt;
           </button>
 
-          {/* 10개 숫자의 페이지 버튼 (startPage ~ endPage) */}
           {Array.from(
             { length: endPage - startPage + 1 },
             (_, i) => startPage + i,
@@ -198,7 +220,6 @@ function BoardList() {
             </button>
           ))}
 
-          {/* 다음 10개 그룹으로 이동 (>) */}
           <button
             disabled={endPage === totalPages}
             onClick={() => fetchList(endPage + 1)}
@@ -211,7 +232,6 @@ function BoardList() {
             &gt;
           </button>
 
-          {/* 맨 끝 페이지로 이동 (>>) */}
           <button
             disabled={page === totalPages}
             onClick={() => fetchList(totalPages)}
@@ -307,6 +327,18 @@ const styles = {
     borderRadius: "6px",
     fontSize: "14px",
     cursor: "pointer",
+  },
+  /* 🔄 초기화 버튼 스타일 추가 */
+  resetBtn: {
+    backgroundColor: "#e2e8f0",
+    color: "#475569",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "6px",
+    fontSize: "14px",
+    fontWeight: "500",
+    cursor: "pointer",
+    transition: "background 0.2s",
   },
   tableWrapper: {
     overflowX: "auto",

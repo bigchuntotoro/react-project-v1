@@ -40,4 +40,6 @@ public interface BoardMapper {
 
     // 10. 특정 파일 ID 목록 삭제
     int deleteFilesByIds(@Param("list") List<Long> deleteFileIds);
+
+    BoardFileDto selectFileById(Long fileId);
 }

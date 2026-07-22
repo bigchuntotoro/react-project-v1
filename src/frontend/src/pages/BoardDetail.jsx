@@ -34,6 +34,13 @@ function BoardDetail() {
     }
   };
 
+  // 💡 이미지 파일 여부 확인 함수
+  const isImageFile = (fileName) => {
+    if (!fileName) return false;
+    const ext = fileName.split(".").pop().toLowerCase();
+    return ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"].includes(ext);
+  };
+
   // 스켈레톤/로딩 상태
   if (loading) {
     return (
@@ -64,6 +71,11 @@ function BoardDetail() {
     );
   }
 
+  // 이미지 파일만 필터링
+  const imageFiles = board.fileList?.filter((file) =>
+    isImageFile(file.originalName),
+  );
+
   return (
     <div style={styles.container}>
       {/* 1. 상단 제목 & 메타 정보 */}
@@ -76,13 +88,15 @@ function BoardDetail() {
               📅 {board.createdAt ? board.createdAt.substring(0, 10) : "-"}
             </span>
           </div>
-          {board.viewCount !== undefined && (
-            <span style={styles.views}>👁️ 조회 {board.viewCount}</span>
+          {(board.readCount !== undefined || board.viewCount !== undefined) && (
+            <span style={styles.views}>
+              👁️ 조회 {board.readCount ?? board.viewCount}
+            </span>
           )}
         </div>
       </div>
 
-      {/* 2. 첨부파일 영역 (있을 때만 깔끔하게 노출) */}
+      {/* 2. 첨부파일 다운로드 영역 (위치 변경: 본문 위로 이동) */}
       {board.fileList && board.fileList.length > 0 && (
         <div style={styles.fileSection}>
           <div style={styles.fileTitle}>
@@ -96,7 +110,18 @@ function BoardDetail() {
                 style={styles.fileCard}
                 download
               >
-                <span style={styles.fileName}>📁 {file.originalName}</span>
+                <div style={styles.fileInfo}>
+                  {isImageFile(file.originalName) ? (
+                    <img
+                      src={`/api/boards/download/${file.fileId}`}
+                      alt={file.originalName}
+                      style={styles.fileThumb}
+                    />
+                  ) : (
+                    <span style={{ fontSize: "16px" }}>📁</span>
+                  )}
+                  <span style={styles.fileName}>{file.originalName}</span>
+                </div>
                 <span style={styles.downloadIcon}>💾 다운로드</span>
               </a>
             ))}
@@ -104,8 +129,26 @@ function BoardDetail() {
         </div>
       )}
 
-      {/* 3. 본문 내용 */}
-      <div style={styles.contentBox}>{board.content}</div>
+      {/* 3. 본문 영역 */}
+      <div style={styles.contentContainer}>
+        {/* 3-1. 이미지 파일이 있으면 본문 최상단에 큰 이미지 미리보기 표시 */}
+        {imageFiles && imageFiles.length > 0 && (
+          <div style={styles.imageGallery}>
+            {imageFiles.map((img) => (
+              <div key={img.fileId} style={styles.imageWrapper}>
+                <img
+                  src={`/api/boards/download/${img.fileId}`}
+                  alt={img.originalName}
+                  style={styles.previewImage}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 3-2. 텍스트 본문 */}
+        <div style={styles.contentBox}>{board.content}</div>
+      </div>
 
       {/* 4. 하단 버튼 영역 */}
       <div style={styles.footer}>
@@ -128,7 +171,7 @@ function BoardDetail() {
   );
 }
 
-// 🎨 스타일 객체 (List/Write와 완전히 동일한 톤앤매너)
+// 🎨 스타일 객체
 const styles = {
   container: {
     maxWidth: "850px",
@@ -142,7 +185,7 @@ const styles = {
   header: {
     borderBottom: "2px solid #f1f5f9",
     paddingBottom: "20px",
-    marginBottom: "24px",
+    marginBottom: "20px",
   },
   title: {
     margin: "0 0 16px 0",
@@ -177,15 +220,6 @@ const styles = {
     fontSize: "13px",
     color: "#94a3b8",
   },
-  contentBox: {
-    minHeight: "220px",
-    padding: "20px 8px",
-    fontSize: "16px",
-    lineHeight: "1.8",
-    color: "#334155",
-    whiteSpace: "pre-wrap", // 줄바꿈 유지
-    wordBreak: "break-word",
-  },
   fileSection: {
     backgroundColor: "#f8fafc",
     borderRadius: "8px",
@@ -215,6 +249,18 @@ const styles = {
     textDecoration: "none",
     transition: "all 0.2s",
   },
+  fileInfo: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+  fileThumb: {
+    width: "32px",
+    height: "32px",
+    objectFit: "cover",
+    borderRadius: "4px",
+    border: "1px solid #e2e8f0",
+  },
   fileName: {
     fontSize: "14px",
     color: "#1e293b",
@@ -224,6 +270,36 @@ const styles = {
     fontSize: "13px",
     color: "#2563eb",
     fontWeight: "600",
+  },
+  contentContainer: {
+    padding: "8px 0",
+  },
+  imageGallery: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+    marginBottom: "20px",
+  },
+  imageWrapper: {
+    width: "100%",
+    backgroundColor: "#f8fafc",
+    borderRadius: "8px",
+    overflow: "hidden",
+    border: "1px solid #f1f5f9",
+  },
+  previewImage: {
+    width: "100%",
+    maxHeight: "600px",
+    objectFit: "contain",
+    display: "block",
+  },
+  contentBox: {
+    minHeight: "180px",
+    fontSize: "16px",
+    lineHeight: "1.8",
+    color: "#334155",
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
   },
   footer: {
     display: "flex",

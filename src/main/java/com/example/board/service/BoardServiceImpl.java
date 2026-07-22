@@ -20,7 +20,7 @@ import java.util.List;
 public class BoardServiceImpl implements BoardService {
 
     private final BoardMapper boardMapper;
-    private final FileUtils fileUtils; // 👈 FileUtils 주입 완료
+    private final FileUtils fileUtils;
 
     /**
      * 1. 게시글 목록 조회 (페이징/검색)
@@ -65,7 +65,7 @@ public class BoardServiceImpl implements BoardService {
     @Override
     @Transactional
     public void saveBoard(BoardDto boardDto, List<MultipartFile> files) {
-        // 1) 게시글 본문 DB 저장 (useGeneratedKeys로 boardDto.boardId 자동 세팅)
+        // 1) 게시글 본문 DB 저장
         boardMapper.insertBoard(boardDto);
 
         // 2) 첨부파일 디스크 저장 및 DB Bulk Insert
@@ -89,14 +89,12 @@ public class BoardServiceImpl implements BoardService {
 
         // 2) 삭제 요청된 파일 삭제 (디스크 물리 삭제 + DB 레코드 삭제)
         if (deleteFileIds != null && !deleteFileIds.isEmpty()) {
-            // DB 전체 파일 목록 중 삭제 대상 필터링 후 디스크 파일 삭제
             List<BoardFileDto> currentFiles = boardMapper.selectFilesByBoardId(boardDto.getBoardId());
             for (BoardFileDto file : currentFiles) {
                 if (deleteFileIds.contains(file.getFileId())) {
                     fileUtils.deleteFile(file.getSaveName());
                 }
             }
-            // DB 테이블 레코드 삭제
             boardMapper.deleteFilesByIds(deleteFileIds);
         }
 
@@ -120,7 +118,15 @@ public class BoardServiceImpl implements BoardService {
         List<BoardFileDto> files = boardMapper.selectFilesByBoardId(boardId);
         fileUtils.deleteFiles(files);
 
-        // 2) 게시글 DB 삭제 (Cascade 설정 시 reactboard_file 의 파일 데이터도 함께 삭제됨)
+        // 2) 게시글 DB 삭제
         boardMapper.deleteBoard(boardId);
+    }
+
+    /**
+     * 7. 단일 파일 정보 조회 (다운로드 및 미리보기용) 👈 추가
+     */
+    @Override
+    public BoardFileDto getFileById(Long fileId) {
+        return boardMapper.selectFileById(fileId);
     }
 }

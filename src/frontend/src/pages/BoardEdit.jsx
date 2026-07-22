@@ -13,6 +13,12 @@ function BoardEdit() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 💡 파일이 이미지인지 확인하는 헬퍼 함수
+  const isImageFile = (fileName) => {
+    if (!fileName) return false;
+    return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
+  };
+
   useEffect(() => {
     setLoading(true);
     axios
@@ -84,7 +90,6 @@ function BoardEdit() {
     deleteFileIds.forEach((fId) => formData.append("deleteFileIds", fId));
 
     try {
-      // Axios가 FormData를 감지해 Content-Type 및 boundary를 자동 설정하도록 headers 명시는 생략합니다.
       await axios.put(`/api/boards/${id}`, formData);
       alert("게시글이 수정되었습니다.");
       navigate(`/detail/${id}`);
@@ -122,7 +127,7 @@ function BoardEdit() {
       </div>
 
       <form onSubmit={handleUpdate} style={styles.form}>
-        {/* 제목 & 작성자 (작성자는 읽기 전용) */}
+        {/* 제목 & 작성자 */}
         <div style={styles.row}>
           <div style={{ ...styles.inputGroup, flex: 2 }}>
             <label style={styles.label}>
@@ -176,6 +181,8 @@ function BoardEdit() {
             <div style={styles.fileList}>
               {existingFiles.map((f) => {
                 const isMarkedDelete = deleteFileIds.includes(f.fileId);
+                const isImg = isImageFile(f.originalName);
+
                 return (
                   <div
                     key={f.fileId}
@@ -185,17 +192,31 @@ function BoardEdit() {
                       borderColor: isMarkedDelete ? "#fca5a5" : "#e2e8f0",
                     }}
                   >
-                    <span
-                      style={{
-                        ...styles.fileName,
-                        textDecoration: isMarkedDelete
-                          ? "line-through"
-                          : "none",
-                        color: isMarkedDelete ? "#ef4444" : "#1e293b",
-                      }}
-                    >
-                      📁 {f.originalName}
-                    </span>
+                    <div style={styles.fileInfoGroup}>
+                      {/* 🖼️ 기존 이미지 미리보기 */}
+                      {isImg && (
+                        <img
+                          src={`/api/boards/download/${f.fileId}`}
+                          alt={f.originalName}
+                          style={{
+                            ...styles.previewImage,
+                            opacity: isMarkedDelete ? 0.4 : 1,
+                          }}
+                        />
+                      )}
+                      <span
+                        style={{
+                          ...styles.fileName,
+                          textDecoration: isMarkedDelete
+                            ? "line-through"
+                            : "none",
+                          color: isMarkedDelete ? "#ef4444" : "#1e293b",
+                        }}
+                      >
+                        {isImg ? "🖼️" : "📁"} {f.originalName}
+                      </span>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => toggleDeleteFile(f.fileId)}
@@ -245,23 +266,40 @@ function BoardEdit() {
 
           {newFiles.length > 0 && (
             <div style={styles.fileList}>
-              {newFiles.map((file, index) => (
-                <div key={index} style={styles.fileItem}>
-                  <span style={styles.fileName}>
-                    ✨ [신규] {file.name}{" "}
-                    <span style={styles.fileSize}>
-                      ({(file.size / 1024).toFixed(1)} KB)
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveNewFile(index)}
-                    style={styles.removeFileBtn}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
+              {newFiles.map((file, index) => {
+                const isImg = isImageFile(file.name);
+                const previewUrl = isImg ? URL.createObjectURL(file) : null;
+
+                return (
+                  <div key={index} style={styles.fileItem}>
+                    <div style={styles.fileInfoGroup}>
+                      {/* 🖼️ 신규 선택 이미지 미리보기 */}
+                      {isImg && previewUrl && (
+                        <img
+                          src={previewUrl}
+                          alt={file.name}
+                          style={styles.previewImage}
+                          onLoad={() => URL.revokeObjectURL(previewUrl)} // 메모리 누수 방지
+                        />
+                      )}
+                      <span style={styles.fileName}>
+                        ✨ [신규] {file.name}{" "}
+                        <span style={styles.fileSize}>
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveNewFile(index)}
+                      style={styles.removeFileBtn}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -288,7 +326,7 @@ function BoardEdit() {
   );
 }
 
-// 🎨 스타일 객체 (전체 컴포넌트 공통 디자인)
+// 🎨 스타일 객체 (미리보기 이미지 관련 스타일 추가)
 const styles = {
   container: {
     maxWidth: "800px",
@@ -404,6 +442,18 @@ const styles = {
     borderRadius: "6px",
     border: "1px solid #e2e8f0",
     transition: "all 0.2s",
+  },
+  fileInfoGroup: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+  previewImage: {
+    width: "48px",
+    height: "48px",
+    objectFit: "cover",
+    borderRadius: "6px",
+    border: "1px solid #cbd5e1",
   },
   fileName: {
     fontSize: "13px",

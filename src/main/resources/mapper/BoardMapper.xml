@@ -26,18 +26,33 @@
     </sql>
 
     <!-- 1. 게시글 목록 조회 (페이징 + 검색) -->
-    <select id="selectBoardList" resultType="com.example.board.dto.BoardDto">
+    <select id="selectBoardList" parameterType="com.example.board.dto.SearchDto" resultType="com.example.board.dto.BoardDto">
         SELECT
-        board_id,
-        title,
-        writer,
-        read_cnt AS read_count,
-        created_at
-        FROM reactboard
+        b.board_id AS boardId,
+        b.title,
+        b.writer,
+        b.read_cnt AS readCount,
+        b.created_at AS createdAt,
+        COUNT(f.file_id) AS fileCount  <!-- 👈 첨부파일 개수 계산 -->
+        FROM reactboard b
+        LEFT JOIN reactboard_file f ON b.board_id = f.board_id
         WHERE 1=1
-        <include refid="search"/>
-        ORDER BY board_id DESC
-        LIMIT #{recordSize} OFFSET #{offset}
+        <if test="keyword != null and keyword != ''">
+            <choose>
+                <when test="searchType == 'title'">
+                    AND b.title LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <when test="searchType == 'content'">
+                    AND b.content LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <when test="searchType == 'writer'">
+                    AND b.writer LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+            </choose>
+        </if>
+        GROUP BY b.board_id  <!-- 👈 COUNT 함수 사용 시 필수 -->
+        ORDER BY b.board_id DESC
+        LIMIT #{offset}, #{recordSize}
     </select>
 
     <!-- 2. 게시글 총 개수 (페이징용) -->
@@ -118,4 +133,15 @@
         </foreach>
     </delete>
 
+    <select id="selectFileById" parameterType="long" resultType="com.example.board.dto.BoardFileDto">
+        SELECT
+        file_id AS fileId,
+        board_id AS boardId,
+        original_name AS originalName,
+        save_name AS saveName,
+        file_size AS fileSize,
+        created_at AS createdAt
+        FROM reactboard_file
+        WHERE file_id = #{fileId}
+    </select>
 </mapper>

@@ -1,6 +1,7 @@
 package com.example.board.service;
 
 import com.example.board.dto.BoardDto;
+import com.example.board.dto.BoardFileDto;
 import com.example.board.dto.SearchDto;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,4 +26,7 @@ public interface BoardService {
 
     // 6. 게시글 삭제 (관련 파일 삭제 포함)
     void deleteBoard(Long boardId);
+
+    // 7. 단일 파일 조회 (다운로드 및 미리보기용) 👈 추가
+    BoardFileDto getFileById(Long fileId);
 }

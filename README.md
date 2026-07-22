@@ -96,6 +96,12 @@ CREATE TABLE board_file (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_board_file FOREIGN KEY (board_id) REFERENCES board(board_id) ON DELETE CASCADE
 );
+
+CREATE DATABASE IF NOT EXISTS board_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+
+CREATE USER IF NOT EXISTS 'board_user'@'%' IDENTIFIED BY 'board_pass';
+GRANT ALL PRIVILEGES ON board_db.* TO 'board_user'@'%';
+FLUSH PRIVILEGES;
 ```
 
 ---

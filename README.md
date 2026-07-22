@@ -130,6 +130,13 @@ github 연결후 mvnw spring-boot:run 실행안될때
 1. IntelliJ 우측 상단/우측 탭에서 Maven 탭을 클릭하여 엽니다.
 2. 툴바 상단의 m 아이콘 (Execute Maven Goal) 또는 돌아가는 아이콘을 클릭합니다.
 3. 입력창에 아래 명령어를 그대로 입력하고 Enter를 누릅니다.
+mvn wrapper:wrapper
+
+터미널 대신 IntelliJ GUI로 바로 실행하는 팁
+터미널 명령어 문제가 지속된다면 IntelliJ의 Maven GUI 버튼을 이용하는 게 가장 편합니다.
+IntelliJ 우측 사이드바의 Maven 탭을 클릭합니다.
+Plugins ➔ spring-boot ➔ spring-boot:run 항목을 찾습니다.
+더블클릭하면 터미널 명령어 에러 없이 바로 Spring Boot가 실행됩니다!
 
 #### Frontend (React)
 ```bash

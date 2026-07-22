@@ -149,6 +149,14 @@ Plugins ➔ spring-boot ➔ spring-boot:run 항목을 찾습니다.
 cd src/frontend
 npm install
 npm run dev
+
+npm -v 에러날때
+관리자 권한으로 스크립트 실행 허용 (추천)
+한 번만 설정해 두면 앞으로 PowerShell에서 npm이나 npx 명령어를 쓸 때 오류가 뜨지 않습니다.
+PowerShell을 관리자 권한으로 실행합니다.
+Windows 키 ➔ PowerShell 검색 ➔ 마우스 우클릭 후 [관리자로 실행]
+아래 명령어를 복사해서 붙여넣고 엔터를 만듭니다.
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
 ---

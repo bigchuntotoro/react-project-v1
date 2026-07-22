@@ -126,6 +126,10 @@ logging.level.java.sql.PreparedStatement=debug
 ```bash
 ./mvnw spring-boot:run
 ```
+github 연결후 mvnw spring-boot:run 실행안될때
+1. IntelliJ 우측 상단/우측 탭에서 Maven 탭을 클릭하여 엽니다.
+2. 툴바 상단의 m 아이콘 (Execute Maven Goal) 또는 돌아가는 아이콘을 클릭합니다.
+3. 입력창에 아래 명령어를 그대로 입력하고 Enter를 누릅니다.
 
 #### Frontend (React)
 ```bash

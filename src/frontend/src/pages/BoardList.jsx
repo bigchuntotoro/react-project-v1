@@ -9,6 +9,9 @@ function BoardList() {
   const [keyword, setKeyword] = useState("");
   const navigate = useNavigate();
 
+  const pageSize = 10; // 한 페이지 당 게시글 수
+  const pageGroupSize = 10; // 한 번에 노출할 페이지 버튼 수
+
   const fetchList = async (targetPage = 1) => {
     try {
       const res = await axios.get("/api/boards", {
@@ -25,7 +28,12 @@ function BoardList() {
     fetchList(1);
   }, []);
 
-  const totalPages = Math.ceil((data.totalCount || 0) / 10);
+  // 총 페이지 수 계산
+  const totalPages = Math.ceil((data.totalCount || 0) / pageSize);
+
+  // 🔢 10개 단위 페이징 계산 로직
+  const startPage = Math.floor((page - 1) / pageGroupSize) * pageGroupSize + 1;
+  const endPage = Math.min(startPage + pageGroupSize - 1, totalPages);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -33,10 +41,6 @@ function BoardList() {
     }
   };
 
-  /**
-   * 첨부파일 존재 여부 확인 헬퍼 함수
-   * 백엔드 전달 DTO 구조(fileCount, hasFile, fileList 중 하나)에 맞춰 자동 판별합니다.
-   */
   const hasAttachment = (item) => {
     if (item.fileCount && item.fileCount > 0) return true;
     if (item.hasFile === true || item.hasFile === "Y") return true;
@@ -122,7 +126,6 @@ function BoardList() {
                       {item.title}
                     </Link>
                   </td>
-                  {/* 📎 첨부파일 표시 컬럼 */}
                   <td style={{ ...styles.td, textAlign: "center" }}>
                     {hasAttachment(item) ? (
                       <span title="첨부파일 있음" style={styles.fileBadge}>
@@ -158,17 +161,34 @@ function BoardList() {
         </table>
       </div>
 
-      {/* 페이징 */}
+      {/* 🔢 10개 단위 페이징 영역 */}
       {totalPages > 0 && (
         <div style={styles.pagination}>
+          {/* 맨 처음 페이지로 이동 (<<) */}
           <button
             disabled={page === 1}
-            onClick={() => fetchList(page - 1)}
-            style={{ ...styles.pageBtn, opacity: page === 1 ? 0.4 : 1 }}
+            onClick={() => fetchList(1)}
+            style={{ ...styles.pageBtn, opacity: page === 1 ? 0.3 : 1 }}
+            title="첫 페이지"
+          >
+            &lt;&lt;
+          </button>
+
+          {/* 이전 10개 그룹으로 이동 (<) */}
+          <button
+            disabled={startPage === 1}
+            onClick={() => fetchList(startPage - 1)}
+            style={{ ...styles.pageBtn, opacity: startPage === 1 ? 0.3 : 1 }}
+            title="이전 10개"
           >
             &lt;
           </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+
+          {/* 10개 숫자의 페이지 버튼 (startPage ~ endPage) */}
+          {Array.from(
+            { length: endPage - startPage + 1 },
+            (_, i) => startPage + i,
+          ).map((p) => (
             <button
               key={p}
               onClick={() => fetchList(p)}
@@ -177,15 +197,31 @@ function BoardList() {
               {p}
             </button>
           ))}
+
+          {/* 다음 10개 그룹으로 이동 (>) */}
           <button
-            disabled={page === totalPages}
-            onClick={() => fetchList(page + 1)}
+            disabled={endPage === totalPages}
+            onClick={() => fetchList(endPage + 1)}
             style={{
               ...styles.pageBtn,
-              opacity: page === totalPages ? 0.4 : 1,
+              opacity: endPage === totalPages ? 0.3 : 1,
             }}
+            title="다음 10개"
           >
             &gt;
+          </button>
+
+          {/* 맨 끝 페이지로 이동 (>>) */}
+          <button
+            disabled={page === totalPages}
+            onClick={() => fetchList(totalPages)}
+            style={{
+              ...styles.pageBtn,
+              opacity: page === totalPages ? 0.3 : 1,
+            }}
+            title="마지막 페이지"
+          >
+            &gt;&gt;
           </button>
         </div>
       )}
@@ -193,7 +229,6 @@ function BoardList() {
   );
 }
 
-// 🎨 스타일 객체 (첨부파일 스타일 추가)
 const styles = {
   container: {
     maxWidth: "900px",
@@ -324,6 +359,7 @@ const styles = {
   pagination: {
     display: "flex",
     justifyContent: "center",
+    alignItems: "center",
     gap: "6px",
     marginTop: "24px",
   },
@@ -331,22 +367,30 @@ const styles = {
     border: "1px solid #cbd5e1",
     backgroundColor: "#fff",
     color: "#475569",
-    minWidth: "32px",
-    height: "32px",
+    minWidth: "36px",
+    height: "36px",
+    padding: "0 6px",
     borderRadius: "6px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "13px",
+    display: "inline-flex",
+    justifyContent: "center",
+    alignItems: "center",
   },
   activePageBtn: {
     border: "1px solid #2563eb",
     backgroundColor: "#2563eb",
     color: "#fff",
-    minWidth: "32px",
-    height: "32px",
+    minWidth: "36px",
+    height: "36px",
+    padding: "0 6px",
     borderRadius: "6px",
     cursor: "pointer",
     fontWeight: "bold",
     fontSize: "14px",
+    display: "inline-flex",
+    justifyContent: "center",
+    alignItems: "center",
   },
 };
 

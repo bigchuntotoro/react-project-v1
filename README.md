@@ -174,7 +174,7 @@ java -jar target/board-0.0.1-SNAPSHOT.jar
 * IDE 및 OS 설정 파일 (`.mvn/`, `.idea/`, `.DS_Store`)
 
 ##.gitignore
--------------------------
+```bash
 # ==========================================
 # 1. Node modules 및 Frontend 빌드 파일
 # ==========================================
@@ -224,7 +224,7 @@ mvnw.cmd
 # OS / System
 .DS_Store
 Thumbs.db
--------------------------
+---
 
 
 이미 커밋되어 추적 중인 파일이 있다면?

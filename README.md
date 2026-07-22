@@ -168,3 +168,68 @@ java -jar target/board-0.0.1-SNAPSHOT.jar
 * Node modules 및 Frontend 빌드 파일 (`/src/frontend/node_modules`, `/src/main/resources/static/`)
 * Java 빌드 결과물 (`/target/`, `/*.jar`)
 * IDE 및 OS 설정 파일 (`.mvn/`, `.idea/`, `.DS_Store`)
+
+##.gitignore
+-------------------------
+# ==========================================
+# 1. Node modules 및 Frontend 빌드 파일
+# ==========================================
+src/frontend/node_modules/
+src/main/resources/static/
+src/frontend/build/
+src/frontend/dist/
+
+# ==========================================
+# 2. Java / Maven 빌드 결과물
+# ==========================================
+target/
+*.jar
+*.war
+.mvn/
+mvnw
+mvnw.cmd
+
+# ==========================================
+# 3. IDE (IntelliJ) 및 OS 설정 파일
+# ==========================================
+# IntelliJ 기본 설정 및 캐시
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# 디폴트 무시된 파일
+/shelf/
+/workspace.xml
+
+# 쿼리 파일을 포함한 무시된 디폴트 폴더
+/queries/
+
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+
+# 에디터 기반 HTTP 클라이언트 요청
+/httpRequests/
+
+# Eclipse 및 기타 IDE
+.settings/
+.classpath
+.project
+
+# OS / System
+.DS_Store
+Thumbs.db
+-------------------------
+
+
+이미 커밋되어 추적 중인 파일이 있다면?
+.gitignore에 뒤늦게 등록하더라도, 이미 Git에 커밋되어 올라간 파일은 계속 추적됩니다. 이 경우 Git 캐시에서 삭제해 주어야 합니다.
+
+# Git 추적 목록에서만 제거 (실제 로컬 파일은 삭제되지 않음)
+git rm -r --cached src/frontend/node_modules
+git rm -r --cached target
+git rm -r --cached .idea
+
+# 삭제 상태를 커밋
+git commit -m "Chore: .gitignore 적용 및 불필요한 빌드/설정 파일 추적 제거"

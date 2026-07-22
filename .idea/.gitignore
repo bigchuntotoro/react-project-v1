@@ -1,0 +1,50 @@
+# ==========================================
+# 1. Node modules 및 Frontend 빌드 파일
+# ==========================================
+src/frontend/node_modules/
+src/main/resources/static/
+src/frontend/build/
+src/frontend/dist/
+
+# ==========================================
+# 2. Java / Maven 빌드 결과물
+# ==========================================
+*.jar
+**/*.jar
+target/
+*.war
+.mvn/
+mvnw
+mvnw.cmd
+
+# ==========================================
+# 3. IDE (IntelliJ) 및 OS 설정 파일
+# ==========================================
+# IntelliJ 기본 설정 및 캐시
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# 디폴트 무시된 파일
+/shelf/
+/workspace.xml
+
+# 쿼리 파일을 포함한 무시된 디폴트 폴더
+/queries/
+
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+
+# 에디터 기반 HTTP 클라이언트 요청
+/httpRequests/
+
+# Eclipse 및 기타 IDE
+.settings/
+.classpath
+.project
+
+# OS / System
+.DS_Store
+Thumbs.db

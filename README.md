@@ -230,7 +230,15 @@ Thumbs.db
 이미 커밋되어 추적 중인 파일이 있다면?
 .gitignore에 뒤늦게 등록하더라도, 이미 Git에 커밋되어 올라간 파일은 계속 추적됩니다. 이 경우 Git 캐시에서 삭제해 주어야 합니다.
 
-git rm -r --cached .
-git add .
-git commit -m "Chore: Remove build, IDE config, and node_modules from tracking based on .gitignore"
-git push origin main
+# 1. jar 파일 및 target 폴더 지정 삭제
+git rm -rf --cached target
+
+# 2. .idea 및 기타 설정 폴더 지정 삭제
+git rm -rf --cached .idea
+git rm -rf --cached .mvn
+git rm -rf --cached src/frontend/node_modules
+git rm -rf --cached src/main/resources/static
+
+# 3. 커밋 및 푸시
+git commit -m "Chore: Force remove ignored files"
+git push origin 현재브랜치명

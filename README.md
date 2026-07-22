@@ -131,7 +131,7 @@ logging.level.java.sql.PreparedStatement=debug
 ```bash
 cd src/frontend
 npm install
-npm start
+npm run dev
 ```
 
 ---

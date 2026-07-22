@@ -67,7 +67,7 @@
         file_id,
         board_id,
         original_name,
-        save_name AS saved_name,
+        save_name,
         file_size
         FROM reactboard_file
         WHERE board_id = #{boardId}
@@ -80,11 +80,12 @@
     </insert>
 
     <!-- 6. 파일 정보 다중 등록 (Bulk Insert) -->
+    <!-- 💡 file.savedName 은 BoardFileDto의 필드명과 일치해야 합니다. -->
     <insert id="insertBoardFiles">
         INSERT INTO reactboard_file (board_id, original_name, save_name, file_size)
         VALUES
         <foreach collection="list" item="file" separator=",">
-            (#{file.boardId}, #{file.originalName}, #{file.savedName}, #{file.fileSize})
+            (#{file.boardId}, #{file.originalName}, #{file.saveName}, #{file.fileSize})
         </foreach>
     </insert>
 
@@ -102,15 +103,15 @@
         WHERE board_id = #{boardId}
     </update>
 
-    <!-- 9. 게시글 삭제 -->
+    <!-- 9. 게시글 삭제 (테이블명 reactboard 로 수정) -->
     <delete id="deleteBoard">
-        DELETE FROM board
+        DELETE FROM reactboard
         WHERE board_id = #{boardId}
     </delete>
 
-    <!-- 10. 특정 파일 ID 목록 삭제 -->
+    <!-- 10. 특정 파일 ID 목록 삭제 (테이블명 reactboard_file 로 수정) -->
     <delete id="deleteFilesByIds">
-        DELETE FROM board_file
+        DELETE FROM reactboard_file
         WHERE file_id IN
         <foreach collection="list" item="id" open="(" separator="," close=")">
             #{id}

@@ -6,3 +6,4 @@ com\example\board\dto\SearchDto.class
 com\example\board\DemoApplication.class
 com\example\board\dto\BoardDto.class
 com\example\board\mapper\BoardMapper.class
+com\example\board\util\FileUtils.class

@@ -33,6 +33,17 @@ function BoardList() {
     }
   };
 
+  /**
+   * 첨부파일 존재 여부 확인 헬퍼 함수
+   * 백엔드 전달 DTO 구조(fileCount, hasFile, fileList 중 하나)에 맞춰 자동 판별합니다.
+   */
+  const hasAttachment = (item) => {
+    if (item.fileCount && item.fileCount > 0) return true;
+    if (item.hasFile === true || item.hasFile === "Y") return true;
+    if (item.fileList && item.fileList.length > 0) return true;
+    return false;
+  };
+
   return (
     <div style={styles.container}>
       {/* 헤더 섹션 */}
@@ -82,10 +93,19 @@ function BoardList() {
         <table style={styles.table}>
           <thead>
             <tr>
-              <th style={{ ...styles.th, width: "80px" }}>번호</th>
+              <th style={{ ...styles.th, width: "70px", textAlign: "center" }}>
+                번호
+              </th>
               <th style={styles.th}>제목</th>
-              <th style={{ ...styles.th, width: "120px" }}>작성자</th>
-              <th style={{ ...styles.th, width: "130px" }}>작성일</th>
+              <th style={{ ...styles.th, width: "60px", textAlign: "center" }}>
+                첨부
+              </th>
+              <th style={{ ...styles.th, width: "120px", textAlign: "center" }}>
+                작성자
+              </th>
+              <th style={{ ...styles.th, width: "130px", textAlign: "center" }}>
+                작성일
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -101,6 +121,16 @@ function BoardList() {
                     <Link to={`/detail/${item.boardId}`} style={styles.link}>
                       {item.title}
                     </Link>
+                  </td>
+                  {/* 📎 첨부파일 표시 컬럼 */}
+                  <td style={{ ...styles.td, textAlign: "center" }}>
+                    {hasAttachment(item) ? (
+                      <span title="첨부파일 있음" style={styles.fileBadge}>
+                        📎
+                      </span>
+                    ) : (
+                      "-"
+                    )}
                   </td>
                   <td style={{ ...styles.td, textAlign: "center" }}>
                     <span style={styles.authorBadge}>{item.writer}</span>
@@ -119,7 +149,7 @@ function BoardList() {
               ))
             ) : (
               <tr>
-                <td colSpan="4" style={styles.emptyTd}>
+                <td colSpan="5" style={styles.emptyTd}>
                   등록된 게시물이 없습니다.
                 </td>
               </tr>
@@ -163,7 +193,7 @@ function BoardList() {
   );
 }
 
-// 🎨 스타일 객체 (깔끔한 인라인 디자인)
+// 🎨 스타일 객체 (첨부파일 스타일 추가)
 const styles = {
   container: {
     maxWidth: "900px",
@@ -286,6 +316,10 @@ const styles = {
     borderRadius: "12px",
     fontSize: "13px",
     color: "#475569",
+  },
+  fileBadge: {
+    fontSize: "15px",
+    cursor: "default",
   },
   pagination: {
     display: "flex",

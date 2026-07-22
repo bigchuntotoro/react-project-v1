@@ -14,11 +14,12 @@ function BoardWrite() {
 
     if (files.length + selectedFiles.length > 5) {
       alert("첨부파일은 최대 5개까지 등록할 수 있습니다.");
+      e.target.value = ""; // 💡 제한 초과 시에도 input을 초기화해야 재선택이 가능합니다.
       return;
     }
 
     setFiles((prev) => [...prev, ...selectedFiles]);
-    e.target.value = ""; // input 초기화하여 동일 파일 재선택 가능하게 처리
+    e.target.value = ""; // input 초기화
   };
 
   // 선택한 파일 개별 삭제
@@ -37,22 +38,25 @@ function BoardWrite() {
     setIsSubmitting(true);
 
     const formData = new FormData();
+    // JSON 데이터를 Blob으로 만들어 application/json 타입임을 명시
     formData.append(
       "board",
       new Blob([JSON.stringify(form)], { type: "application/json" }),
     );
 
+    // 파일이 존재할 때만 formData에 추가
     files.forEach((file) => {
       formData.append("files", file);
     });
 
     try {
-      // Axios가 FormData를 감지하여 Content-Type 및 boundary를 자동 설정하도록 headers 명시는 생략합니다.
+      // Axios가 boundary를 포함한 Content-Type을 자동으로 헤더에 세팅합니다.
       await axios.post("/api/boards", formData);
       alert("게시글이 성공적으로 등록되었습니다.");
       navigate("/");
     } catch (err) {
-      alert("등록 실패: " + (err.response?.data || err.message));
+      const errorMsg = err.response?.data || err.message || "알 수 없는 오류";
+      alert("등록 실패: " + errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -140,7 +144,7 @@ function BoardWrite() {
           {files.length > 0 && (
             <div style={styles.fileList}>
               {files.map((file, index) => (
-                <div key={index} style={styles.fileItem}>
+                <div key={`${file.name}-${index}`} style={styles.fileItem}>
                   <span style={styles.fileName}>
                     📁 {file.name}{" "}
                     <span style={styles.fileSize}>
@@ -182,7 +186,6 @@ function BoardWrite() {
   );
 }
 
-// 🎨 스타일 객체 (BoardList와 일관된 UI 톤앤매너)
 const styles = {
   container: {
     maxWidth: "800px",

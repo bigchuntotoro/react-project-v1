@@ -4,13 +4,13 @@ import com.example.board.dto.BoardDto;
 import com.example.board.dto.BoardFileDto;
 import com.example.board.dto.SearchDto;
 import com.example.board.mapper.BoardMapper;
+import com.example.board.util.FileUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -20,7 +20,7 @@ import java.util.List;
 public class BoardServiceImpl implements BoardService {
 
     private final BoardMapper boardMapper;
-    // private final FileUtils fileUtils; // 파일 물리 저장 및 BoardFileDto 변환 유틸
+    private final FileUtils fileUtils; // 👈 FileUtils 주입 완료
 
     /**
      * 1. 게시글 목록 조회 (페이징/검색)
@@ -44,13 +44,13 @@ public class BoardServiceImpl implements BoardService {
     @Override
     @Transactional
     public BoardDto getBoardById(Long boardId) {
-        // 1) 조회수 증가 (Mapper의 updateReadCount 메서드 사용)
+        // 1) 조회수 증가
         boardMapper.updateReadCount(boardId);
 
         // 2) 게시글 상세 정보 조회
         BoardDto board = boardMapper.selectBoardById(boardId);
 
-        // 3) 첨부파일 목록 조회 후 세팅 (BoardDto 내에 fileList가 있는 경우)
+        // 3) 첨부파일 목록 조회 후 세팅
         if (board != null) {
             List<BoardFileDto> fileList = boardMapper.selectFilesByBoardId(boardId);
             board.setFileList(fileList);
@@ -60,27 +60,18 @@ public class BoardServiceImpl implements BoardService {
     }
 
     /**
-     * 4. 게시글 등록 (파일 저장 포함)
+     * 4. 게시글 등록 (파일 물리 저장 + DB 저장)
      */
     @Override
     @Transactional
     public void saveBoard(BoardDto boardDto, List<MultipartFile> files) {
-        // 1) 게시글 본문 DB 저장 (useGeneratedKeys로 boardDto에 boardId 자동 채움)
+        // 1) 게시글 본문 DB 저장 (useGeneratedKeys로 boardDto.boardId 자동 세팅)
         boardMapper.insertBoard(boardDto);
 
-        // 2) 첨부파일 업로드 및 DB 저장
+        // 2) 첨부파일 디스크 저장 및 DB Bulk Insert
         if (files != null && !files.isEmpty()) {
-            List<BoardFileDto> fileList = new ArrayList<>();
+            List<BoardFileDto> fileList = fileUtils.uploadFiles(files, boardDto.getBoardId());
 
-            for (MultipartFile file : files) {
-                if (!file.isEmpty()) {
-                    // TODO: FileUtils를 사용하여 실제 디스크에 저장 후 BoardFileDto 객체 생성
-                    // BoardFileDto boardFile = fileUtils.uploadFile(file, boardDto.getBoardId());
-                    // fileList.add(boardFile);
-                }
-            }
-
-            // 업로드할 파일이 존재하는 경우 일괄 Insert (insertBoardFiles)
             if (!fileList.isEmpty()) {
                 boardMapper.insertBoardFiles(fileList);
             }
@@ -88,7 +79,7 @@ public class BoardServiceImpl implements BoardService {
     }
 
     /**
-     * 5. 게시글 수정 (파일 추가/삭제 포함)
+     * 5. 게시글 수정 (파일 선택적 추가/삭제 포함)
      */
     @Override
     @Transactional
@@ -96,23 +87,22 @@ public class BoardServiceImpl implements BoardService {
         // 1) 게시글 본문 수정
         boardMapper.updateBoard(boardDto);
 
-        // 2) 삭제 요청된 파일 삭제 (deleteFilesByIds)
+        // 2) 삭제 요청된 파일 삭제 (디스크 물리 삭제 + DB 레코드 삭제)
         if (deleteFileIds != null && !deleteFileIds.isEmpty()) {
-            // TODO: 필요한 경우 DB 삭제 전 디스크의 실제 파일 삭제 로직 추가
+            // DB 전체 파일 목록 중 삭제 대상 필터링 후 디스크 파일 삭제
+            List<BoardFileDto> currentFiles = boardMapper.selectFilesByBoardId(boardDto.getBoardId());
+            for (BoardFileDto file : currentFiles) {
+                if (deleteFileIds.contains(file.getFileId())) {
+                    fileUtils.deleteFile(file.getSaveName());
+                }
+            }
+            // DB 테이블 레코드 삭제
             boardMapper.deleteFilesByIds(deleteFileIds);
         }
 
         // 3) 새로 추가된 파일 업로드 및 DB 저장
         if (files != null && !files.isEmpty()) {
-            List<BoardFileDto> newFileList = new ArrayList<>();
-
-            for (MultipartFile file : files) {
-                if (!file.isEmpty()) {
-                    // TODO: FileUtils를 사용하여 실제 디스크 저장 후 BoardFileDto 생성
-                    // BoardFileDto boardFile = fileUtils.uploadFile(file, boardDto.getBoardId());
-                    // newFileList.add(boardFile);
-                }
-            }
+            List<BoardFileDto> newFileList = fileUtils.uploadFiles(files, boardDto.getBoardId());
 
             if (!newFileList.isEmpty()) {
                 boardMapper.insertBoardFiles(newFileList);
@@ -121,20 +111,16 @@ public class BoardServiceImpl implements BoardService {
     }
 
     /**
-     * 6. 게시글 삭제 (관련 파일 삭제 포함)
+     * 6. 게시글 삭제 (관련 첨부파일 전체 삭제 포함)
      */
     @Override
     @Transactional
     public void deleteBoard(Long boardId) {
-        // 1) 관련 첨부파일 목록 조회 후 실제 디스크 파일 삭제 (필요시)
-        /*
+        // 1) 게시글에 속한 첨부파일 디스크에서 물리적 삭제
         List<BoardFileDto> files = boardMapper.selectFilesByBoardId(boardId);
-        for (BoardFileDto file : files) {
-            fileUtils.deleteFile(file.getSavedPath());
-        }
-        */
+        fileUtils.deleteFiles(files);
 
-        // 2) 게시글 삭제 (DB에서 외래키 ON DELETE CASCADE 설정이 되어 있다면 파일 레코드도 자동 삭제됨)
+        // 2) 게시글 DB 삭제 (Cascade 설정 시 reactboard_file 의 파일 데이터도 함께 삭제됨)
         boardMapper.deleteBoard(boardId);
     }
 }

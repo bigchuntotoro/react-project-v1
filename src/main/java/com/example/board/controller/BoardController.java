@@ -3,6 +3,7 @@ package com.example.board.controller;
 import com.example.board.dto.*;
 import com.example.board.service.BoardService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,13 +41,13 @@ public class BoardController {
     }
 
     // 3. 게시글 작성 (파일 최대 5개)
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> create(
             @RequestPart("board") BoardDto boardDto,
             @RequestPart(value = "files", required = false) List<MultipartFile> files) {
 
         if (files != null && files.size() > 5) {
-            return ResponseEntity.badRequest().body("첨부파일은 최대 5개까지 가능합니다.");
+            return ResponseEntity.badRequest().body("첨부파일은 최대 5개까지 등록할 수 있습니다.");
         }
 
         boardService.saveBoard(boardDto, files);
@@ -54,7 +55,7 @@ public class BoardController {
     }
 
     // 4. 게시글 수정
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> update(
             @PathVariable("id") Long id,
             @RequestPart("board") BoardDto boardDto,

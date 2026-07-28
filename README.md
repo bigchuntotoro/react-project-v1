@@ -188,7 +188,7 @@ java -jar target/board-0.0.1-SNAPSHOT.jar
 ---
 
 ## 🙈 Git 관리 규칙 (.gitignore)
-
+```bash
 다음 경로 및 파일은 GitHub에 커밋되지 않도록 `.gitignore`에 등록되어 있습니다:
 * Node modules 및 Frontend 빌드 파일 (`/src/frontend/node_modules`, `/src/main/resources/static/`)
 * Java 빌드 결과물 (`/target/`, `/*.jar`)

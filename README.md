@@ -259,7 +259,6 @@ git rm -rf --cached src/main/resources/static
 # 2. 커밋 및 푸시
 git commit -m "Chore: Force remove ignored files"
 git push origin main
----
 
 ```
 
@@ -379,3 +378,88 @@ spring.security.oauth2.client.provider.naver.user-name-attribute=response
 토큰 발행: Spring Boot에서 네이버 유저 정보를 확인 후 MariaDB에 저장, 자체 JWT Access Token 발행
 
 프론트 전달: http://localhost:3000/oauth/redirect?token=YOUR_JWT_TOKEN으로 리다이렉트하여 localStorage에 토큰 저장
+
+```
+
+React 프로젝트 구조
+
+src/
+├── api/
+│    └── axiosInstance.js               # Axios 인스턴스 (Request/Response Interceptor)
+├── components/
+│    ├── ProtectedRoute.jsx             # 로그인 권한 보호 컴포넌트
+│    └── OAuthRedirectHandler.jsx      # JWT 수신 및 Storage 저장 핸들러
+├── pages/
+│    ├── BoardList.jsx                  # 게시글 목록 (페이징/검색)
+│    ├── BoardDetail.jsx                # 게시글 상세 (파일 다운로드/이미지 표시)
+│    ├── BoardWrite.jsx                 # 게시글 작성 (파일 업로드)
+│    └── BoardEdit.jsx                  # 게시글 수정
+├── App.jsx                             # Router 설정
+└── main.jsx
+
+
+## 🔐 Authentication & Authorization Architecture
+
+본 프로젝트는 **OAuth2 (Naver)**와 **JWT (JSON Web Token)**를 결합하여 **Stateless(무상태성)** 인증 구조로 구현되었습니다.
+
+### 1. OAuth2 로그인 및 JWT 발급 흐름 (로그인 과정)
+
+```sequence
+[사용자 (Browser)]           [React (Frontend)]            [Spring Boot (Backend)]             [Naver OAuth Server]
+        |                             |                              |                                   |
+1. 로그인 버튼 클릭 -------------------->|                              |                                   |
+        |                             | 2. Redirect 요청 ----------->|                                   |
+        |                             |    (/oauth2/authorization/naver)                                 |
+        |                             |                              | 3. 네이버 로그인 페이지로 이동 ----->|
+        |<----------------------------+------------------------------+-----------------------------------|
+4. 네이버 로그인 및 동의 ---------------+------------------------------+---------------------------------->|
+        |                             |                              |                                   |
+        |                             |                              | 5. Authorization Code 전달       |
+        |                             |                              |<----------------------------------|
+        |                             |                              |                                   |
+        |                             |                              | 6. Access Token 요청 & 프로필 조회 |
+        |                             |                              |<=================================>|
+        |                             |                              |   (CustomOAuth2UserService)       |
+        |                             |                              |                                   |
+        |                             |                              | 7. JWT Access Token 생성          |
+        |                             |                              |    (JwtTokenProvider)             |
+        |                             |                              |                                   |
+        | 8. Redirect (URL 뒤에 토큰 첨부)                              | 8. Frontend로 Redirect            |
+        |<-----------------------------------------------------------+    (OAuth2SuccessHandler)          |
+        |  (http://localhost:5173/oauth/redirect?token=eyJhbG...)  |                                   |
+        |                             |                              |                                   |
+9. React 콜백 페이지 이동 ------------->|                              |                                   |
+        |                             | 10. URL 쿼리에서 token 추출   |                                   |
+        |                             |     및 localStorage에 저장    |                                   |
+
+
+API 인증 및 보호된 자원 요청 흐름 (로그인 후)
+
+[React (Frontend)]                                 [Spring Boot (Backend)]
+        |                                                     |
+        | 1. API 요청 (글쓰기, 수정, 삭제 등)                   |
+        |    Header: Authorization: Bearer <JWT_TOKEN>        |
+        |---------------------------------------------------->|
+        |                                                     | 2. JwtAuthenticationFilter 통과
+        |                                                     |    - Request Header에서 토큰 추출
+        |                                                     |    - JwtTokenProvider.validateToken() 검증
+        |                                                     |    - SecurityContextHolder에 Authentication 저장
+        |                                                     |
+        |                                                     | 3. SecurityConfig 권한 검증
+        |                                                     |    - .authenticated() 라우트 확인
+        |                                                     |
+        |                                                     | 4. Controller & Service 로직 실행
+        |                                                     |
+        | 5. API 응답 (JSON Data)                             |
+        |<----------------------------------------------------|
+
+
+### 🛠️ Backend Core Components
+
+| Component | Class Name | Description |
+| :--- | :--- | :--- |
+| **Security Config** | `SecurityConfig` | 전체 Security 필터 체인 관리, URL별 접근 권한 제어, `JwtAuthenticationFilter` 상위 필터 등록 |
+| **OAuth2 Service** | `CustomOAuth2UserService` | 네이버 프로필 API 응답(`response` JSON) 파싱 및 사용자 DB 저장/업데이트 |
+| **JWT Provider** | `JwtTokenProvider` | Secret Key 기반 JWT 생성, 유효성 검증(`validateToken`), `Authentication` 객체 추출 |
+| **Success Handler** | `OAuth2SuccessHandler` | 네이버 인증 성공 시 JWT 발급 후, React 리다이렉트 URL(`?token=...`)로 이동 |
+| **JWT Filter** | `JwtAuthenticationFilter` | API 요청 시 Header의 JWT를 검증하여 Spring Security 인증 상태(`SecurityContext`)로 등록 |

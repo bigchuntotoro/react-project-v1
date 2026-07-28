@@ -1,5 +1,7 @@
 package com.example.board.config;
 
+import com.example.board.config.jwt.JwtAuthenticationFilter; // 👈 JwtAuthenticationFilter 경로
+import com.example.board.config.jwt.JwtTokenProvider;       // 👈 JwtTokenProvider 경로
 import com.example.board.config.oauth.CustomOAuth2UserService;
 import com.example.board.config.oauth.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +13,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -19,6 +22,7 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final JwtTokenProvider jwtTokenProvider; // 🔑 1. JwtTokenProvider 의존성 주입
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -33,7 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/boards/**").permitAll()
                         .requestMatchers("/api/boards/download/**").permitAll()
-                        .requestMatchers("/login/**", "/oauth2/**").permitAll()
+                        .requestMatchers("/login/**", "/oauth2/**", "/oauth/**").permitAll()
                         .requestMatchers("/api/boards/**").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -42,6 +46,12 @@ public class SecurityConfig {
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
+                )
+
+                // 🔑 2. JWT 필터를 UsernamePasswordAuthenticationFilter 전에 추가
+                .addFilterBefore(
+                        new JwtAuthenticationFilter(jwtTokenProvider),
+                        UsernamePasswordAuthenticationFilter.class
                 );
 
         return http.build();

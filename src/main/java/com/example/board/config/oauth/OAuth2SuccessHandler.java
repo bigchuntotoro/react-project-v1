@@ -1,13 +1,12 @@
 package com.example.board.config.oauth;
 
-// ⚠️ javax가 아닌 jakarta 패키지를 import 해야 합니다!
+import com.example.board.config.jwt.JwtTokenProvider;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -18,19 +17,25 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
+    // 🔑 프로젝트에서 작성하신 JWT 토큰 발급 클래스를 주입받습니다.
+    private final JwtTokenProvider jwtTokenProvider;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
 
-        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+        // 1. 로그인 성공한 사용자 기반으로 JWT (Access Token) 생성
+        String token = jwtTokenProvider.createToken(authentication);
 
-        // 프론트엔드(React) 리다이렉트 주소 설정
+        // 2. React 콜백 URL 주소 뒤에 ?token={JWT_TOKEN} 쿼리 파라미터 첨부
         String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/oauth/redirect")
-                // 추후 JWT 토큰 생성 후 쿼리파라미터로 전달
-                // .queryParam("token", token)
-                .build().toUriString();
+                .queryParam("token", token) // 👈 주석을 해제하고 토큰 추가!
+                .build()
+                .encode()
+                .toUriString();
 
+        // 3. React 프론트엔드로 리다이렉트
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

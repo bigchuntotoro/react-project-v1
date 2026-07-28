@@ -195,7 +195,7 @@ java -jar target/board-0.0.1-SNAPSHOT.jar
 * IDE 및 OS 설정 파일 (`.mvn/`, `.idea/`, `.DS_Store`)
 
 ##.gitignore
-```bash
+
 # ==========================================
 # 1. Node modules 및 Frontend 빌드 파일
 # ==========================================
@@ -245,8 +245,6 @@ mvnw.cmd
 # OS / System
 .DS_Store
 Thumbs.db
----
-
 
 이미 커밋되어 추적 중인 파일이 있다면?
 .gitignore에 뒤늦게 등록하더라도, 이미 Git에 커밋되어 올라간 파일은 계속 추적됩니다. 이 경우 Git 캐시에서 삭제해 주어야 합니다.
@@ -261,3 +259,38 @@ git rm -rf --cached src/main/resources/static
 # 2. 커밋 및 푸시
 git commit -m "Chore: Force remove ignored files"
 git push origin main
+---
+
+## 🔐 네이버 OAuth 2.0 소셜 로그인 설정 (Naver Login)
+
+본 프로젝트는 **OAuth 2.0** 및 **JWT**를 활용하여 네이버 소셜 로그인 기능을 제공합니다.
+
+---
+
+### 1. 네이버 개발자 센터 (Naver Developers) 설정
+
+1. [네이버 개발자 센터](https://developers.naver.com/) 로그인 후 **Application > 애플리케이션 등록**으로 이동합니다.
+2. 애플리케이션 정보를 입력합니다.
+   * **애플리케이션 이름**: `프로젝트명`
+   * **사용 API**: `네이버 로그인` (이름, 이메일, 프로필 사진 필수/선택 체크)
+   * **로그인 Open API 서비스 환경**: `WEB`
+   * **서비스 URL**: `http://localhost:3000` (React 개발 서버)
+   * **네이버 로그인 Callback URL**: `http://localhost:8080/login/oauth2/code/naver` (Spring Boot OAuth 엔드포인트)
+3. 등록 완료 후 발급된 **Client ID**와 **Client Secret**을 확인합니다.
+
+---
+
+### 2. MariaDB 유저 테이블 스키마 (`users`)
+
+소셜 로그인 사용자 정보를 저장하기 위한 테이블 구조입니다.
+
+```sql
+CREATE TABLE users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    social_id VARCHAR(255) NOT NULL UNIQUE, -- 네이버 제공 고유 ID
+    email VARCHAR(100),
+    name VARCHAR(50),
+    provider VARCHAR(20) DEFAULT 'NAVER',   -- 로그인 출처 (NAVER)
+    role VARCHAR(20) DEFAULT 'ROLE_USER',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

@@ -1,16 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { jwtDecode } from "jwt-decode";
+import axiosInstance from "../api/axiosInstance"; // axios 대신 인터셉터가 적용된 axiosInstance 사용
 
 function BoardDetail() {
   const { id } = useParams();
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
+  // 1. 로그인 유저 정보 추출 & 게시글 데이터 조회
   useEffect(() => {
+    // JWT 토큰에서 현재 사용자 정보 추출 (본인 글 여부 판단용)
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        // 토큰 payload의 username, sub, email 등 설정된 사용자 식별자 필드 사용
+        setCurrentUser(decoded.sub || decoded.username || decoded.writer);
+      } catch (e) {
+        console.error("토큰 파싱 실패:", e);
+      }
+    }
+
     setLoading(true);
-    axios
+    axiosInstance
       .get(`/api/boards/${id}`)
       .then((res) => {
         setBoard(res.data);
@@ -23,14 +38,16 @@ function BoardDetail() {
       });
   }, [id]);
 
+  // 2. 게시글 삭제 처리
   const handleDelete = async () => {
     if (!window.confirm("정말 이 게시글을 삭제하시겠습니까?")) return;
     try {
-      await axios.delete(`/api/boards/${id}`);
-      alert("게시글이 삭제되었습니다.");
+      await axiosInstance.delete(`/api/boards/${id}`);
+      alert("게시글이 성공적으로 삭제되었습니다.");
       navigate("/");
     } catch (err) {
-      alert("삭제 실패: " + (err.response?.data || err.message));
+      const errorMsg = err.response?.data || err.message || "삭제 실패";
+      alert("삭제 실패: " + errorMsg);
     }
   };
 
@@ -76,6 +93,9 @@ function BoardDetail() {
     isImageFile(file.originalName),
   );
 
+  // 본인 작성 글인지 여부 확인 (작성자 아이디/이름으로 비교)
+  const isOwner = currentUser && board.writer === currentUser;
+
   return (
     <div style={styles.container}>
       {/* 1. 상단 제목 & 메타 정보 */}
@@ -96,7 +116,7 @@ function BoardDetail() {
         </div>
       </div>
 
-      {/* 2. 첨부파일 다운로드 영역 (위치 변경: 본문 위로 이동) */}
+      {/* 2. 첨부파일 다운로드 영역 */}
       {board.fileList && board.fileList.length > 0 && (
         <div style={styles.fileSection}>
           <div style={styles.fileTitle}>
@@ -131,7 +151,7 @@ function BoardDetail() {
 
       {/* 3. 본문 영역 */}
       <div style={styles.contentContainer}>
-        {/* 3-1. 이미지 파일이 있으면 본문 최상단에 큰 이미지 미리보기 표시 */}
+        {/* 3-1. 이미지 파일 미리보기 */}
         {imageFiles && imageFiles.length > 0 && (
           <div style={styles.imageGallery}>
             {imageFiles.map((img) => (
@@ -155,17 +175,21 @@ function BoardDetail() {
         <button style={styles.listBtn} onClick={() => navigate("/")}>
           ☰ 목록보기
         </button>
-        <div style={styles.actionBtns}>
-          <button
-            style={styles.editBtn}
-            onClick={() => navigate(`/edit/${id}`)}
-          >
-            ✏️ 수정
-          </button>
-          <button style={styles.deleteBtn} onClick={handleDelete}>
-            🗑️ 삭제
-          </button>
-        </div>
+
+        {/* 본인 작성 글일 때만 수정/삭제 버튼 노출 (필요 시 isOwner 조건 해제 가능) */}
+        {isOwner && (
+          <div style={styles.actionBtns}>
+            <button
+              style={styles.editBtn}
+              onClick={() => navigate(`/edit/${id}`)}
+            >
+              ✏️ 수정
+            </button>
+            <button style={styles.deleteBtn} onClick={handleDelete}>
+              🗑️ 삭제
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

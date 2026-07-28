@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { jwtDecode } from "jwt-decode";
+import axiosInstance from "../api/axiosInstance"; // axios 대신 인터셉터가 적용된 axiosInstance 사용
 
 function BoardEdit() {
   const { id } = useParams();
@@ -19,9 +20,36 @@ function BoardEdit() {
     return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
   };
 
+  // 1. 초기 게시글 데이터 로드 및 토큰/권한 검증
   useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      alert("로그인이 필요한 서비스입니다.");
+      navigate("/login");
+      return;
+    }
+
+    // 토큰 만료 여부 체크
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+        alert("세션이 만료되었습니다. 다시 로그인해 주세요.");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        navigate("/login");
+        return;
+      }
+    } catch (e) {
+      console.error("토큰 파싱 실패:", e);
+      alert("유효하지 않은 인증 정보입니다.");
+      navigate("/login");
+      return;
+    }
+
     setLoading(true);
-    axios
+
+    // ✨ axiosInstance 사용 (상대 경로 요청)
+    axiosInstance
       .get(`/api/boards/${id}`)
       .then((res) => {
         setForm({
@@ -70,7 +98,7 @@ function BoardEdit() {
     setNewFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  // 수정 제출
+  // 2. 게시글 수정 제출 (axiosInstance 사용)
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.content.trim()) {
@@ -90,11 +118,17 @@ function BoardEdit() {
     deleteFileIds.forEach((fId) => formData.append("deleteFileIds", fId));
 
     try {
-      await axios.put(`/api/boards/${id}`, formData);
-      alert("게시글이 수정되었습니다.");
+      // ✨ axiosInstance를 사용하여 수정 요청
+      await axiosInstance.put(`/api/boards/${id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      alert("게시글이 성공적으로 수정되었습니다.");
       navigate(`/detail/${id}`);
     } catch (err) {
-      alert("수정 실패: " + (err.response?.data || err.message));
+      const errorMsg = err.response?.data || err.message || "알 수 없는 오류";
+      alert("수정 실패: " + errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -271,7 +305,7 @@ function BoardEdit() {
                 const previewUrl = isImg ? URL.createObjectURL(file) : null;
 
                 return (
-                  <div key={index} style={styles.fileItem}>
+                  <div key={`${file.name}-${index}`} style={styles.fileItem}>
                     <div style={styles.fileInfoGroup}>
                       {/* 🖼️ 신규 선택 이미지 미리보기 */}
                       {isImg && previewUrl && (
@@ -279,7 +313,7 @@ function BoardEdit() {
                           src={previewUrl}
                           alt={file.name}
                           style={styles.previewImage}
-                          onLoad={() => URL.revokeObjectURL(previewUrl)} // 메모리 누수 방지
+                          onLoad={() => URL.revokeObjectURL(previewUrl)}
                         />
                       )}
                       <span style={styles.fileName}>
@@ -326,7 +360,7 @@ function BoardEdit() {
   );
 }
 
-// 🎨 스타일 객체 (미리보기 이미지 관련 스타일 추가)
+// 🎨 스타일 객체
 const styles = {
   container: {
     maxWidth: "800px",

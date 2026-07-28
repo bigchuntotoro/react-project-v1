@@ -261,6 +261,8 @@ git commit -m "Chore: Force remove ignored files"
 git push origin main
 ---
 
+```
+
 ## 🔐 네이버 OAuth 2.0 소셜 로그인 설정 (Naver Login)
 
 본 프로젝트는 **OAuth 2.0** 및 **JWT**를 활용하여 네이버 소셜 로그인 기능을 제공합니다.

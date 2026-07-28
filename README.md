@@ -286,7 +286,7 @@ git push origin main
 
 소셜 로그인 사용자 정보를 저장하기 위한 테이블 구조입니다.
 
-```sql
+
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     social_id VARCHAR(255) NOT NULL UNIQUE, -- 네이버 제공 고유 ID
@@ -297,8 +297,21 @@ CREATE TABLE users (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+### 3. 의존성 추가
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
 
-### 3. Spring Boot 백엔드 설정
+### 4. Spring Boot 백엔드 설정
 # =========================================================
 # MariaDB 데이터베이스 설정
 # =========================================================

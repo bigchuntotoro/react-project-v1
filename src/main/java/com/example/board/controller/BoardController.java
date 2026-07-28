@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
+import org.springframework.security.core.Authentication;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -57,11 +58,17 @@ public class BoardController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> create(
             @RequestPart("board") BoardDto boardDto,
-            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            Authentication authentication) { // 👈 1. 인증 객체 주입
 
         if (files != null && files.size() > 5) {
             return ResponseEntity.badRequest().body("첨부파일은 최대 5개까지 등록할 수 있습니다.");
         }
+
+        // 👈 2. 토큰에서 추출한 사용자 식별자(이름 또는 아이디)를 writer에 강제 세팅
+        // (authentication.getName()은 JWT의 Subject(sub) 값을 가져옵니다)
+        String currentUsername = authentication.getName();
+        boardDto.setWriter(currentUsername);
 
         boardService.saveBoard(boardDto, files);
         return ResponseEntity.ok("등록 완료");

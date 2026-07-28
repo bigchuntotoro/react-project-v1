@@ -1,5 +1,6 @@
 package com.example.board.config.jwt;
 
+import com.example.board.dto.TokenResponseDTO;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -31,33 +32,24 @@ public class JwtTokenProvider {
     private String secretKey;
 
     @Value("${jwt.expiration-time}")
-    private long expirationTime;
+    private long expirationTime; // Access Token 만료 시간 (ms)
 
+    private long refreshTokenExpirationTime; // Refresh Token 만료 시간 (ms)
     private SecretKey key;
 
     @PostConstruct
     protected void init() {
         // 비밀키 초기화 (HMAC-SHA 키 생성)
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+        // Refresh Token 만료 시간 = Access Token 만료 시간의 14배 (예: 1시간 기준 -> 약 14일)
+        this.refreshTokenExpirationTime = expirationTime * 14;
     }
 
     /**
-     * 1. Authentication 객체 기반 JWT Access Token 생성
+     * 🔑 [신규] Authentication 객체 기반 Access Token + Refresh Token 동시 발급
      */
-    public String createToken(Authentication authentication) {
-        String username;
-
-        // OAuth2 로그인 유저와 일반 유저 타입 분기 처리
-        if (authentication.getPrincipal() instanceof OAuth2User) {
-            OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-            // CustomOAuth2UserService에서 설정한 Key 또는 이메일
-            username = oAuth2User.getAttribute("email");
-            if (username == null) {
-                username = authentication.getName();
-            }
-        } else {
-            username = authentication.getName();
-        }
+    public TokenResponseDTO generateToken(Authentication authentication) {
+        String username = extractUsername(authentication);
 
         // 권한 정보 가져오기 (예: ROLE_USER, ROLE_ADMIN)
         String authorities = authentication.getAuthorities().stream()
@@ -65,15 +57,39 @@ public class JwtTokenProvider {
                 .collect(Collectors.joining(","));
 
         Date now = new Date();
-        Date validity = new Date(now.getTime() + expirationTime);
+        Date accessTokenValidity = new Date(now.getTime() + expirationTime);
+        Date refreshTokenValidity = new Date(now.getTime() + refreshTokenExpirationTime);
 
-        return Jwts.builder()
-                .subject(username)                       // 토큰 주인 (이메일 또는 ID)
-                .claim("auth", authorities)              // 권한 정보 저장
-                .issuedAt(now)                           // 발급 시간
-                .expiration(validity)                    // 만료 시간
-                .signWith(key)                           // 서명 알고리즘 및 키
+        // 1. Access Token 생성
+        String accessToken = Jwts.builder()
+                .subject(username)
+                .claim("auth", authorities)
+                .issuedAt(now)
+                .expiration(accessTokenValidity)
+                .signWith(key)
                 .compact();
+
+        // 2. Refresh Token 생성 (보안을 위해 권한 정보 제외, 최소한의 정보만 바인딩)
+        String refreshToken = Jwts.builder()
+                .subject(username)
+                .issuedAt(now)
+                .expiration(refreshTokenValidity)
+                .signWith(key)
+                .compact();
+
+        // 3. DTO 빌드 후 반환
+        return TokenResponseDTO.builder()
+                .grantType("Bearer")
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    /**
+     * 1. 기존 createToken 메서드 (OAuth2SuccessHandler 등 단일 Access Token만 필요한 곳에서 호환 유지)
+     */
+    public String createToken(Authentication authentication) {
+        return generateToken(authentication).getAccessToken();
     }
 
     /**
@@ -82,11 +98,18 @@ public class JwtTokenProvider {
     public Authentication getAuthentication(String token) {
         Claims claims = parseClaims(token);
 
-        Collection<? extends GrantedAuthority> authorities =
-                Arrays.stream(claims.get("auth").toString().split(","))
-                        .filter(auth -> !auth.trim().isEmpty())
-                        .map(SimpleGrantedAuthority::new)
-                        .collect(Collectors.toList());
+        Object authClaim = claims.get("auth");
+        Collection<? extends GrantedAuthority> authorities;
+
+        // Refresh Token처럼 auth 클레임이 없는 경우 대비
+        if (authClaim != null && !authClaim.toString().trim().isEmpty()) {
+            authorities = Arrays.stream(authClaim.toString().split(","))
+                    .filter(auth -> !auth.trim().isEmpty())
+                    .map(SimpleGrantedAuthority::new)
+                    .collect(Collectors.toList());
+        } else {
+            authorities = java.util.Collections.emptyList();
+        }
 
         User principal = new User(claims.getSubject(), "", authorities);
         return new UsernamePasswordAuthenticationToken(principal, token, authorities);
@@ -123,5 +146,16 @@ public class JwtTokenProvider {
         } catch (ExpiredJwtException e) {
             return e.getClaims();
         }
+    }
+
+    /**
+     * Principal 타입별 Username(식별자/이메일) 추출 헬퍼 메서드
+     */
+    private String extractUsername(Authentication authentication) {
+        if (authentication.getPrincipal() instanceof OAuth2User oAuth2User) {
+            String email = oAuth2User.getAttribute("email");
+            return (email != null) ? email : authentication.getName();
+        }
+        return authentication.getName();
     }
 }

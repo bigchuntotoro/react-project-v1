@@ -1,57 +1,95 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { jwtDecode } from "jwt-decode";
+import axiosInstance from "../api/axiosInstance"; // axios 인스턴스만 활용
 
 function BoardWrite() {
-  const [form, setForm] = useState({ title: "", writer: "", content: "" });
+  const [form, setForm] = useState({ title: "", content: "" });
+  const [writer, setWriter] = useState(""); // UI 표시용 작성자 상태
   const [files, setFiles] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  // 파일 선택 처리 (최대 5개 제한)
+  // 1. 토큰 확인 및 작성자 정보 추출 (만료 여부 검증 추가)
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      alert("로그인이 필요한 서비스입니다.");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+
+      // 토큰 만료 여부 확인 (exp는 초 단위)
+      if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+        alert("세션이 만료되었습니다. 다시 로그인해 주세요.");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        navigate("/login");
+        return;
+      }
+
+      // 백엔드 JWT Claim 이름에 맞게 변경 (nickname, sub, username 등)
+      const currentUser = decoded.nickname || decoded.sub || "로그인 유저";
+      setWriter(currentUser);
+    } catch (e) {
+      console.error("토큰 파싱 실패:", e);
+      alert("유효하지 않은 인증 정보입니다.");
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  // 2. 파일 선택 처리 (최대 5개 제한)
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
 
     if (files.length + selectedFiles.length > 5) {
       alert("첨부파일은 최대 5개까지 등록할 수 있습니다.");
-      e.target.value = ""; // 💡 제한 초과 시에도 input을 초기화해야 재선택이 가능합니다.
+      e.target.value = "";
       return;
     }
 
     setFiles((prev) => [...prev, ...selectedFiles]);
-    e.target.value = ""; // input 초기화
+    e.target.value = "";
   };
 
-  // 선택한 파일 개별 삭제
+  // 3. 선택한 파일 개별 삭제
   const handleRemoveFile = (indexToRemove) => {
     setFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  // 폼 제출 처리
+  // 4. 폼 제출 처리 (단일 axiosInstance 사용)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.writer.trim() || !form.content.trim()) {
-      alert("모든 필수 항목(제목, 작성자, 내용)을 입력해 주세요.");
+    if (!form.title.trim() || !form.content.trim()) {
+      alert("모든 필수 항목(제목, 내용)을 입력해 주세요.");
       return;
     }
 
     setIsSubmitting(true);
 
     const formData = new FormData();
-    // JSON 데이터를 Blob으로 만들어 application/json 타입임을 명시
+    // writer는 백엔드가 JWT 토큰에서 자동 주입하므로 title과 content만 전달
     formData.append(
       "board",
       new Blob([JSON.stringify(form)], { type: "application/json" }),
     );
 
-    // 파일이 존재할 때만 formData에 추가
     files.forEach((file) => {
       formData.append("files", file);
     });
 
     try {
-      // Axios가 boundary를 포함한 Content-Type을 자동으로 헤더에 세팅합니다.
-      await axios.post("/api/boards", formData);
+      // ✨ axiosInstance를 사용하여 단 1회만 호출
+      // Interceptor가 Authorization 헤더 첨부 및 토큰 만료시 자동 재발급(/reissue)을 처리합니다.
+      await axiosInstance.post("/api/boards", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       alert("게시글이 성공적으로 등록되었습니다.");
       navigate("/");
     } catch (err) {
@@ -73,7 +111,7 @@ function BoardWrite() {
       </div>
 
       <form onSubmit={handleSubmit} style={styles.form}>
-        {/* 제목 & 작성자 (2열 배치) */}
+        {/* 제목 & 작성자 (2열 배치 - 작성자는 readOnly) */}
         <div style={styles.row}>
           <div style={{ ...styles.inputGroup, flex: 2 }}>
             <label style={styles.label}>
@@ -88,16 +126,14 @@ function BoardWrite() {
             />
           </div>
 
+          {/* 작성자 필드는 수정 불가능한 읽기 전용 형태 */}
           <div style={{ ...styles.inputGroup, flex: 1 }}>
-            <label style={styles.label}>
-              작성자 <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>작성자</label>
             <input
               type="text"
-              placeholder="작성자 이름"
-              value={form.writer}
-              onChange={(e) => setForm({ ...form, writer: e.target.value })}
-              style={styles.input}
+              value={writer}
+              readOnly
+              style={{ ...styles.input, ...styles.readOnlyInput }}
             />
           </div>
         </div>
@@ -241,6 +277,11 @@ const styles = {
     fontSize: "14px",
     outline: "none",
     boxSizing: "border-box",
+  },
+  readOnlyInput: {
+    backgroundColor: "#f1f5f9",
+    color: "#64748b",
+    cursor: "not-allowed",
   },
   textarea: {
     padding: "12px 14px",

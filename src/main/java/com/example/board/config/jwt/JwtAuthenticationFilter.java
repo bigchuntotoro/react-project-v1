@@ -22,6 +22,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
+        // ✨ CORS Preflight(OPTIONS) 요청은 토큰 검증 없이 통과
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // 1. Request Header에서 토큰 추출
         String token = resolveToken(request);
 

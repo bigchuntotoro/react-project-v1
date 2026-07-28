@@ -1,4 +1,4 @@
-# 🚀 React + Spring Boot + MyBatis + MariaDB 통합 게시판 프로젝트
+# 🚀 React + Spring Boot + MyBatis + MariaDB + 네이버로그인 통합 게시판 프로젝트
 
 React 프론트엔드와 Spring Boot 백엔드가 단일 저장소(Single Repository) 구조로 구성된 게시판 프로젝트입니다. 
 빌드 시 React 애플리케이션이 Spring Boot 정적 자원(`src/main/resources/static`)으로 패키징되어 하나의 JAR 실행 파일로 배포할 수 있습니다.

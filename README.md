@@ -310,6 +310,7 @@ CREATE TABLE users (
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+```bash
 
 ### 4. Spring Boot 백엔드 설정
 # =========================================================

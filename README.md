@@ -463,3 +463,66 @@ API 인증 및 보호된 자원 요청 흐름 (로그인 후)
 | **JWT Provider** | `JwtTokenProvider` | Secret Key 기반 JWT 생성, 유효성 검증(`validateToken`), `Authentication` 객체 추출 |
 | **Success Handler** | `OAuth2SuccessHandler` | 네이버 인증 성공 시 JWT 발급 후, React 리다이렉트 URL(`?token=...`)로 이동 |
 | **JWT Filter** | `JwtAuthenticationFilter` | API 요청 시 Header의 JWT를 검증하여 Spring Security 인증 상태(`SecurityContext`)로 등록 |
+
+
+# 🛡️ Spring Boot & React JWT 인증 / CORS 및 토큰 재발급(Reissue) 모듈
+
+Spring Boot(Security)와 React(Axios) 기반의 풀스택 애플리케이션에서 **CORS 이슈 해결**, **JWT 기반 인증**, 그리고 **Access Token 자동 재발급(Reissue)**을 구현한 전체 아키텍처 및 작업 내역 정리 문서입니다.
+
+---
+
+## 📌 1. 주요 기능 및 작업 요약
+
+* **CORS (Cross-Origin Resource Sharing) 허용**: 백엔드 API 및 프론트엔드 간의 교차 출처 리소스 공유 정책 설정
+* **JWT 기반 인증 (Bearer Token)**: 모든 HTTP 요청 헤더에 Access Token 자동 주입
+* **토큰 자동 재발급 (Automatic Token Refresh)**: Access Token 만료(401 Unauthorized) 시 Interceptor를 통해 백그라운드에서 `/reissue` 요청 수행 후 기존 실패 요청 재시도
+* **동시성 처리 (Queue Lock)**: 동시에 발생하는 여러 401 에러 시 중복 재발급 요청 방지
+* **컴포넌트 리팩토링**: React 주요 게시판 컴포넌트에 Interceptor 적용 및 사용자 권한(작성자 본인 확인) 제어
+
+---
+
+## 🏗️ 2. 아키텍처 및 토큰 재발급 흐름
+[React Client]                           [Spring Boot Server]
+|                                           |
+| --- (1) API 요청 (Authorization Header) ---> |
+| <--- (2) 401 Unauthorized (Token Expired) - |
+|                                           |
+[Interceptor]                                   |
+| --- (3) POST /api/auth/reissue ---------> | (Refresh Token 검증)
+| <--- (4) 200 OK (New Access/Refresh) ---- |
+|                                           |
+[Token 갱신]                                    |
+| --- (5) 기존 실패했던 API 요청 재시도 ------> |
+| <--- (6) 200 OK (정상 응답) --------------- |
+
+---
+
+## 🛠️ 3. 세부 구현 내역
+
+### 1) 백엔드 (Spring Boot & Security)
+- **CORS Configuration**
+  - `allowedOrigins`: `http://localhost:3000` 등 프론트엔드 출처 허용
+  - `allowedMethods`: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`
+  - `exposedHeaders`: `Authorization` (클라이언트에서 응답 헤더 읽기 허용)
+  - `allowCredentials`: `true` (쿠키 및 인증 정보 전송 허용)
+- **Token Reissue Endpoint (`/reissue` or `/api/auth/reissue`)**
+  - 클라이언트로부터 `refreshToken`을 전달받아 유효성 및 DB/Storage 일치 여부 검증
+  - 검증 성공 시 새로운 Access Token (및 Refresh Token) 재발급
+
+---
+
+### 2) 프론트엔드 (React & Axios Interceptor)
+
+`axiosInstance.js`를 중앙집중형 HTTP 클라이언트로 구축하여 모든 요청 및 응답을 관리합니다.
+
+#### 🔹 Request Interceptor
+```js
+// localStorage에서 Access Token을 읽어와 Header에 자동 주입
+axiosInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+

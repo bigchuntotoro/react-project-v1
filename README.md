@@ -296,3 +296,72 @@ CREATE TABLE users (
     role VARCHAR(20) DEFAULT 'ROLE_USER',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+
+### 3. Spring Boot 백엔드 설정
+# =========================================================
+# MariaDB 데이터베이스 설정
+# =========================================================
+spring.datasource.url=jdbc:mariadb://localhost:3306/your_db_name
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+spring.datasource.driver-class-name=org.mariadb.jdbc.Driver
+
+# =========================================================
+# Spring Security OAuth2 Client 설정 (네이버 소셜 로그인)
+# =========================================================
+
+# 1. Registration (클라이언트 등록 정보)
+# 발급받은 네이버 Client ID 및 Client Secret을 입력합니다.
+spring.security.oauth2.client.registration.naver.client-id=YOUR_NAVER_CLIENT_ID
+spring.security.oauth2.client.registration.naver.client-secret=YOUR_NAVER_CLIENT_SECRET
+spring.security.oauth2.client.registration.naver.client-name=Naver
+spring.security.oauth2.client.registration.naver.authorization-grant-type=authorization_code
+spring.security.oauth2.client.registration.naver.redirect-uri=http://localhost:8080/login/oauth2/code/naver
+spring.security.oauth2.client.registration.naver.scope=name,email,profile_image
+
+# 2. Provider (네이버 OAuth2 엔드포인트 정보)
+spring.security.oauth2.client.provider.naver.authorization-uri=https://nid.naver.com/oauth2.0/authorize
+spring.security.oauth2.client.provider.naver.token-uri=https://nid.naver.com/oauth2.0/token
+spring.security.oauth2.client.provider.naver.user-info-uri=https://openapi.naver.com/v1/nid/me
+# 네이버 응답 JSON 데이터 중 최상위 객체 이름이 'response'입니다.
+spring.security.oauth2.client.provider.naver.user-name-attribute=response
+
+
+### 4. 로그인 인증 흐름 (Authentication Flow)
+[React (Frontend)] ──(1) 네이버 로그인 클릭──> [Spring Boot (Backend)]
+       ▲                                               │
+       │                                       (2) OAuth 인증 요청
+       │                                               ▼
+       │                                       [Naver Auth Server]
+       │                                               │
+       │                                       (3) Callback & 유저 정보 제공
+       │                                               ▼
+       │                                       [Spring Boot & MariaDB]
+       │                                       - 유저 DB 저장/업데이트
+       │                                       - 자체 JWT 발급
+       │                                               │
+       └────(4) JWT 토큰과 함께 Redirect ──────────────┘
+       
+       
+ src/main/java/com/example/board/
+ ├── config/
+ │    └── oauth/
+ │         ├── CustomOAuth2UserService.java
+ │         ├── OAuth2SuccessHandler.java
+ │         └── dto/
+ │              └── OAuthAttributes.java
+ ├── entity/
+ │    ├── User.java
+ │    └── Role.java
+ └── repository/
+      └── UserRepository.java      
+       
+       
+사용자 요청: React에서 http://localhost:8080/oauth2/authorization/naver로 이동
+
+소셜 인증: 네이버 로그인 페이지에서 사용자 인증 진행
+
+토큰 발행: Spring Boot에서 네이버 유저 정보를 확인 후 MariaDB에 저장, 자체 JWT Access Token 발행
+
+프론트 전달: http://localhost:3000/oauth/redirect?token=YOUR_JWT_TOKEN으로 리다이렉트하여 localStorage에 토큰 저장

@@ -11,7 +11,7 @@ function App() {
   return (
     <BrowserRouter>
       <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
-        <h2>React + Spring Boot + MyBatis + MariaDB + naverLogin</h2>
+        <h2>React + Spring Boot + MariaDB + naverLogin</h2>
         <Routes>
           {/* 🌐 전체 공개 페이지 */}
           <Route path="/" element={<BoardList />} />

@@ -5,25 +5,31 @@ pipeline {
         // 배포 경로 및 앱 설정
         TARGET_DIR   = '/home/totoro/Reactproject/my-board-project'
         APP_NAME     = 'my-board-project'
-        FRONTEND_DIR = "${WORKSPACE}/src/frontend" // 경로 수정 (src/frontend -> frontend)
+
+        // ★ 스크린샷 구조에 맞춰 src/frontend 로 확정
+        FRONTEND_DIR = "${WORKSPACE}/src/frontend"
+
         NGINX_ROOT   = '/usr/share/nginx/html/my-board-project'
 
-        // 실행 환경 설정
+        // 실행 환경 설정 (포트 및 JAVA_HOME)
         JAVA_HOME    = '/usr/lib/jvm/java-21-openjdk-amd64'
         APP_PORT     = '8083'
         PATH         = "/usr/local/bin:/usr/bin:/bin:${env.PATH}"
     }
 
     stages {
-        stage('1. Build Frontend (React)') {
+        stage('1. Build Frontend (React - Vite)') {
             steps {
                 dir("${FRONTEND_DIR}") {
                     sh '''
                         echo "==> Node/NPM Dependencies Installation"
                         npm install
 
-                        echo "==> Building Frontend Application"
+                        echo "==> Building Frontend Application (Vite)"
                         npm run build
+
+                        echo "==> 빌드 완료 후 dist 폴더 확인"
+                        ls -la dist || echo "dist 폴더가 생성되지 않았습니다!"
                     '''
                 }
             }
@@ -51,17 +57,15 @@ pipeline {
                     echo "==> Syncing Frontend Assets to Nginx Directory"
                     sudo mkdir -p ${NGINX_ROOT}
 
-                    # 빌드 결과물 경로 탐색 및 복사
+                    # Vite 전용 처리 (dist 폴더)
                     if [ -d "${FRONTEND_DIR}/dist" ]; then
-                        echo "dist 디렉터리 감지됨"
+                        echo "Vite 빌드 폴더(dist) 감지됨"
                         sudo chmod -R 755 ${FRONTEND_DIR}/dist
                         sudo rsync -av --delete ${FRONTEND_DIR}/dist/ ${NGINX_ROOT}/
-                    elif [ -d "${FRONTEND_DIR}/build" ]; then
-                        echo "build 디렉터리 감지됨"
-                        sudo chmod -R 755 ${FRONTEND_DIR}/build
-                        sudo rsync -av --delete ${FRONTEND_DIR}/build/ ${NGINX_ROOT}/
                     else
-                        echo "오류: 프론트엔드 빌드 결과물(dist 또는 build)을 찾을 수 없습니다."
+                        echo "오류: 프론트엔드 빌드 결과물(dist)을 찾을 수 없습니다."
+                        echo "현재 FRONTEND_DIR 내용:"
+                        ls -la ${FRONTEND_DIR}
                         exit 1
                     fi
 

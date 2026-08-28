@@ -58,7 +58,6 @@ pipeline {
                     # Vite 결과물이 생성된 static 디렉터리 동기화
                     if [ -d "${STATIC_OUT_DIR}" ]; then
                         echo "정적 자원 디렉터리(${STATIC_OUT_DIR}) 감지됨"
-                        sudo chmod -R 755 ${STATIC_OUT_DIR}
                         sudo rsync -av --delete ${STATIC_OUT_DIR}/ ${NGINX_ROOT}/
                     else
                         echo "오류: 프론트엔드 빌드 결과물 경로를 찾을 수 없습니다."

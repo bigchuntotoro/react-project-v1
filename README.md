@@ -18,7 +18,7 @@ React 프론트엔드와 Spring Boot 백엔드가 단일 저장소(Single Reposi
 ## 🛠 기술 스택 (Tech Stack)
 
 ### Backend
-* **Java**: 17
+* **Java**: 21
 * **Framework**: Spring Boot 3.x
 * **Persistence**: MyBatis 3.x
 * **Database**: MariaDB

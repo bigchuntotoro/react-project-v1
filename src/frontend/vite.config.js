@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // '/api'로 시작하는 요청을 Spring Boot 백엔드 서버로 전달합니다.
       "/api": {
-        target: "http://localhost:8080", // Spring Boot 포트
+        target: "http://localhost:8083", // Spring Boot 포트
         changeOrigin: true,
         secure: false,
       },

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://100.88.187.37:8083";
+const API_BASE_URL = "http://localhost:8083";
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL, // 백엔드 서버 주소

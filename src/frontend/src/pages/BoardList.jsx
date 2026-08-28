@@ -40,8 +40,7 @@ function BoardList() {
   // 🟢 네이버 로그인 처리 (백엔드 OAuth2 엔드포인트로 이동)
   const handleNaverLogin = () => {
     // Spring Boot Security가 제공하는 OAuth2 기본 로그인 URL
-    window.location.href =
-      "http://100.88.187.37:8083/oauth2/authorization/naver";
+    window.location.href = "http://localhost:8083/oauth2/authorization/naver";
   };
 
   // 🔴 로그아웃 처리

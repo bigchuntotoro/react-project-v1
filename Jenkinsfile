@@ -5,7 +5,7 @@ pipeline {
         // 배포 경로 및 앱 설정
         TARGET_DIR   = '/home/totoro/Reactproject/my-board-project'
         APP_NAME     = 'my-board-project'
-        FRONTEND_DIR = "${WORKSPACE}/frontend" // 경로 수정 (src/frontend -> frontend)
+        FRONTEND_DIR = "${WORKSPACE}/src/frontend" // 경로 수정 (src/frontend -> frontend)
         NGINX_ROOT   = '/usr/share/nginx/html/my-board-project'
 
         // 실행 환경 설정

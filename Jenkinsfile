@@ -5,10 +5,10 @@ pipeline {
         // 배포 경로 및 앱 설정
         TARGET_DIR   = '/home/totoro/Reactproject/my-board-project'
         APP_NAME     = 'my-board-project'
-        FRONTEND_DIR = "${WORKSPACE}/src/frontend"
+        FRONTEND_DIR = "${WORKSPACE}/frontend" // 경로 수정 (src/frontend -> frontend)
         NGINX_ROOT   = '/usr/share/nginx/html/my-board-project'
 
-        // 실행 환경 설정 (필요 시 포트 및 JAVA_HOME 변경 가능)
+        // 실행 환경 설정
         JAVA_HOME    = '/usr/lib/jvm/java-21-openjdk-amd64'
         APP_PORT     = '8083'
         PATH         = "/usr/local/bin:/usr/bin:/bin:${env.PATH}"
@@ -31,7 +31,6 @@ pipeline {
 
         stage('2. Build Backend (Spring Boot / Maven)') {
             steps {
-                // Config File Provider 플러그인을 통한 Global Maven Settings 적용
                 configFileProvider([
                     configFile(
                         fileId: 'da43d874-9a27-4a98-800f-43c01ce05318',
@@ -52,11 +51,18 @@ pipeline {
                     echo "==> Syncing Frontend Assets to Nginx Directory"
                     sudo mkdir -p ${NGINX_ROOT}
 
-                    # Vite 빌드 결과물(dist) 또는 CRA 결과물(build)을 Nginx 웹 루트로 복사
+                    # 빌드 결과물 경로 탐색 및 복사
                     if [ -d "${FRONTEND_DIR}/dist" ]; then
+                        echo "dist 디렉터리 감지됨"
+                        sudo chmod -R 755 ${FRONTEND_DIR}/dist
                         sudo rsync -av --delete ${FRONTEND_DIR}/dist/ ${NGINX_ROOT}/
                     elif [ -d "${FRONTEND_DIR}/build" ]; then
+                        echo "build 디렉터리 감지됨"
+                        sudo chmod -R 755 ${FRONTEND_DIR}/build
                         sudo rsync -av --delete ${FRONTEND_DIR}/build/ ${NGINX_ROOT}/
+                    else
+                        echo "오류: 프론트엔드 빌드 결과물(dist 또는 build)을 찾을 수 없습니다."
+                        exit 1
                     fi
 
                     sudo chown -R www-data:www-data ${NGINX_ROOT}
@@ -75,7 +81,6 @@ pipeline {
                     mkdir -p ${TARGET_DIR}/logs
 
                     echo "==> Copying Spring Boot Executable JAR"
-                    # Maven target 디렉터리 내 생성된 최신 JAR 파일 탐색
                     BUILD_JAR=$(find target -name "*.jar" ! -name "*-sources.jar" | head -n 1)
 
                     if [ -z "$BUILD_JAR" ]; then
@@ -89,7 +94,6 @@ pipeline {
 
                     echo "==> Restarting Backend Service via PM2"
 
-                    # 기존 프로세스 삭제
                     if pm2 describe ${APP_NAME} > /dev/null 2>&1; then
                         echo "Cleaning up existing PM2 process..."
                         pm2 delete ${APP_NAME}

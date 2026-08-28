@@ -1,60 +1,128 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'maven-3.8.7'
-    }
-
     environment {
-        PROJECT_PATH = '/home/totoro/Reactproject/my-board-project'
-        LOG_PATH     = "${PROJECT_PATH}/backend.log"
+        // 배포 경로 및 앱 설정
+        TARGET_DIR   = '/home/totoro/Reactproject/my-board-project'
+        APP_NAME     = 'my-board-project'
+        FRONTEND_DIR = "${WORKSPACE}/src/frontend"
+        NGINX_ROOT   = '/usr/share/nginx/html/my-board-project'
+
+        // 실행 환경 설정 (필요 시 포트 및 JAVA_HOME 변경 가능)
+        JAVA_HOME    = '/usr/lib/jvm/java-21-openjdk-amd64'
+        APP_PORT     = '8083'
+        PATH         = "/usr/local/bin:/usr/bin:/bin:${env.PATH}"
     }
 
     stages {
-        stage('Frontend Build') {
+        stage('1. Build Frontend (React)') {
             steps {
-                dir('src/frontend') {
-                    sh 'npm install'
-                    sh 'npm run build'
+                dir("${FRONTEND_DIR}") {
+                    sh '''
+                        echo "==> Node/NPM Dependencies Installation"
+                        npm install
+
+                        echo "==> Building Frontend Application"
+                        npm run build
+                    '''
                 }
             }
         }
 
-        stage('Deploy Frontend to Nginx') {
+        stage('2. Build Backend (Spring Boot / Maven)') {
             steps {
-                sh 'sudo cp -r src/frontend/dist/* /var/www/html/'
-            }
-        }
-
-        stage('Backend Build') {
-            steps {
-                // Config File Provider 플러그인을 활용한 글로벌 settings.xml 적용
+                // Config File Provider 플러그인을 통한 Global Maven Settings 적용
                 configFileProvider([
                     configFile(
                         fileId: 'da43d874-9a27-4a98-800f-43c01ce05318',
                         variable: 'MAVEN_GLOBAL_SETTINGS'
                     )
                 ]) {
-                    // -gs 옵션으로 제공된 글로벌 settings.xml 파일 경로 지정
-                    sh 'mvn clean package -DskipTests -gs $MAVEN_GLOBAL_SETTINGS'
+                    sh '''
+                        echo "==> Building Spring Boot Application with Maven"
+                        mvn clean package -DskipTests -gs $MAVEN_GLOBAL_SETTINGS
+                    '''
                 }
             }
         }
 
-        stage('Deploy Backend with PM2') {
+        stage('3. Deploy Frontend to Nginx') {
             steps {
-                script {
-                    sh "mkdir -p ${PROJECT_PATH}"
-                    sh "cp target/*.jar ${PROJECT_PATH}/app.jar"
+                sh '''
+                    echo "==> Syncing Frontend Assets to Nginx Directory"
+                    sudo mkdir -p ${NGINX_ROOT}
 
-                    sh """
-                        pm2 start "java -jar ${PROJECT_PATH}/app.jar" \
-                            --name "my-board-backend" \
-                            --log "${LOG_PATH}" \
-                            --append || pm2 restart "my-board-backend"
-                    """
-                }
+                    # Vite 빌드 결과물(dist) 또는 CRA 결과물(build)을 Nginx 웹 루트로 복사
+                    if [ -d "${FRONTEND_DIR}/dist" ]; then
+                        sudo rsync -av --delete ${FRONTEND_DIR}/dist/ ${NGINX_ROOT}/
+                    elif [ -d "${FRONTEND_DIR}/build" ]; then
+                        sudo rsync -av --delete ${FRONTEND_DIR}/build/ ${NGINX_ROOT}/
+                    fi
+
+                    sudo chown -R www-data:www-data ${NGINX_ROOT}
+
+                    echo "==> Reloading Nginx Service"
+                    sudo systemctl reload nginx
+                '''
             }
+        }
+
+        stage('4. Deploy Backend & Restart Application') {
+            steps {
+                sh '''
+                    echo "==> Preparing Target Directory"
+                    mkdir -p ${TARGET_DIR}
+                    mkdir -p ${TARGET_DIR}/logs
+
+                    echo "==> Copying Spring Boot Executable JAR"
+                    # Maven target 디렉터리 내 생성된 최신 JAR 파일 탐색
+                    BUILD_JAR=$(find target -name "*.jar" ! -name "*-sources.jar" | head -n 1)
+
+                    if [ -z "$BUILD_JAR" ]; then
+                        echo "오류: JAR 파일을 찾을 수 없습니다."
+                        exit 1
+                    fi
+
+                    cp -f "$BUILD_JAR" ${TARGET_DIR}/${APP_NAME}.jar
+
+                    cd ${TARGET_DIR}
+
+                    echo "==> Restarting Backend Service via PM2"
+
+                    # 기존 프로세스 삭제
+                    if pm2 describe ${APP_NAME} > /dev/null 2>&1; then
+                        echo "Cleaning up existing PM2 process..."
+                        pm2 delete ${APP_NAME}
+                    fi
+
+                    echo "==> Starting Spring Boot"
+
+                    pm2 start java \
+                      --name "${APP_NAME}" \
+                      --output "${TARGET_DIR}/logs/backend-out.log" \
+                      --error "${TARGET_DIR}/logs/backend-error.log" \
+                      --time \
+                      -- \
+                      -jar \
+                      -Dserver.port=${APP_PORT} \
+                      ${APP_NAME}.jar
+
+                    pm2 save
+
+                    echo "==> Backend log files"
+                    echo "OUT   : ${TARGET_DIR}/logs/backend-out.log"
+                    echo "ERROR : ${TARGET_DIR}/logs/backend-error.log"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Successfully deployed ${APP_NAME}!"
+        }
+        failure {
+            echo "Deployment failed. Check Jenkins console logs."
         }
     }
 }

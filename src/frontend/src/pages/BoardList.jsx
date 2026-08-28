@@ -2,15 +2,53 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
+// 1. Axios 기본 설정: 요청 시 localStorage의 JWT 토큰을 자동으로 Header에 담아 전송
+const api = axios.create({
+  baseURL: "", // 필요 시 백엔드 기본 URL (예: 'http://localhost:8080')
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 function BoardList() {
   const [data, setData] = useState({ list: [], totalCount: 0 });
   const [page, setPage] = useState(1);
   const [searchType, setSearchType] = useState("title");
   const [keyword, setKeyword] = useState("");
+
+  // 🔑 로그인 상태 관리를 위한 State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   const navigate = useNavigate();
 
   const pageSize = 10; // 한 페이지 당 게시글 수
   const pageGroupSize = 10; // 한 번에 노출할 페이지 버튼 수
+
+  // 🔑 로그인 여부 확인
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  // 🟢 네이버 로그인 처리 (백엔드 OAuth2 엔드포인트로 이동)
+  const handleNaverLogin = () => {
+    // Spring Boot Security가 제공하는 OAuth2 기본 로그인 URL
+    window.location.href = "http://localhost:8080/oauth2/authorization/naver";
+  };
+
+  // 🔴 로그아웃 처리
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    setIsLoggedIn(false);
+    alert("로그아웃 되었습니다.");
+  };
 
   // 🔄 fetchList에서 전달받은 override 값이 있으면 해당 값을 우선 사용 (State 비동기 이슈 방지)
   const fetchList = async (
@@ -19,7 +57,8 @@ function BoardList() {
     overrideKeyword = keyword,
   ) => {
     try {
-      const res = await axios.get("/api/boards", {
+      // 일반 axios 대신 인터셉터가 적용된 api 인스턴스 사용
+      const res = await api.get("/api/boards", {
         params: {
           page: targetPage,
           searchType: overrideSearchType,
@@ -64,6 +103,21 @@ function BoardList() {
     return false;
   };
 
+  // 글 작성 버튼 클릭 시 로그인 체크
+  const handleWriteClick = () => {
+    if (!isLoggedIn) {
+      if (
+        window.confirm(
+          "글 작성을 하려면 로그인이 필요합니다. 네이버로 로그인하시겠습니까?",
+        )
+      ) {
+        handleNaverLogin();
+      }
+      return;
+    }
+    navigate("/write");
+  };
+
   return (
     <div style={styles.container}>
       {/* 헤더 섹션 */}
@@ -75,9 +129,24 @@ function BoardList() {
             <span style={styles.highlight}>{data.totalCount || 0}</span>개
           </p>
         </div>
-        <button style={styles.writeBtn} onClick={() => navigate("/write")}>
-          ✏️ 새 글 작성
-        </button>
+
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {/* 🔑 로그인 / 로그아웃 버튼 영역 */}
+          {isLoggedIn ? (
+            <button style={styles.logoutBtn} onClick={handleLogout}>
+              로그아웃
+            </button>
+          ) : (
+            <button style={styles.naverBtn} onClick={handleNaverLogin}>
+              <span style={{ fontWeight: "bold", marginRight: "5px" }}>N</span>{" "}
+              네이버 로그인
+            </button>
+          )}
+
+          <button style={styles.writeBtn} onClick={handleWriteClick}>
+            ✏️ 새 글 작성
+          </button>
+        </div>
       </div>
 
       {/* 검색 바 */}
@@ -249,6 +318,7 @@ function BoardList() {
   );
 }
 
+// 🎨 기존 스타일 객체에 네이버 로그인 / 로그아웃 버튼 스타일 추가
 const styles = {
   container: {
     maxWidth: "900px",
@@ -279,6 +349,32 @@ const styles = {
   highlight: {
     color: "#2563eb",
     fontWeight: "600",
+  },
+  /* 🟢 네이버 로그인 버튼 스타일 */
+  naverBtn: {
+    backgroundColor: "#03C75A",
+    color: "#fff",
+    border: "none",
+    padding: "10px 16px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    transition: "background 0.2s",
+  },
+  /* 🔴 로그아웃 버튼 스타일 */
+  logoutBtn: {
+    backgroundColor: "#ef4444",
+    color: "#fff",
+    border: "none",
+    padding: "10px 16px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "background 0.2s",
   },
   writeBtn: {
     backgroundColor: "#2563eb",
@@ -328,7 +424,6 @@ const styles = {
     fontSize: "14px",
     cursor: "pointer",
   },
-  /* 🔄 초기화 버튼 스타일 추가 */
   resetBtn: {
     backgroundColor: "#e2e8f0",
     color: "#475569",

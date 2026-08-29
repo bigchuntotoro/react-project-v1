@@ -97,6 +97,18 @@ CREATE TABLE reactboard_file (
     CONSTRAINT fk_reactboard_file FOREIGN KEY (board_id) REFERENCES reactboard(board_id) ON DELETE CASCADE
 );
 
+CREATE TABLE `users` (
+                         `id` bigint(20) NOT NULL AUTO_INCREMENT,
+                         `social_id` varchar(255) NOT NULL,
+                         `email` varchar(100) DEFAULT NULL,
+                         `name` varchar(50) DEFAULT NULL,
+                         `provider` varchar(20) DEFAULT 'NAVER',
+                         `role` varchar(20) DEFAULT 'ROLE_USER',
+                         `created_at` datetime DEFAULT current_timestamp(),
+                         PRIMARY KEY (`id`),
+                         UNIQUE KEY `social_id` (`social_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE DATABASE IF NOT EXISTS board_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
 CREATE USER IF NOT EXISTS 'board_user'@'%' IDENTIFIED BY 'board_pass';

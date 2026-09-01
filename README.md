@@ -391,8 +391,6 @@ spring.security.oauth2.client.provider.naver.user-name-attribute=response
 
 프론트 전달: http://localhost:3000/oauth/redirect?token=YOUR_JWT_TOKEN으로 리다이렉트하여 localStorage에 토큰 저장
 
-```
-
 React 프로젝트 구조
 
 src/
@@ -408,7 +406,7 @@ src/
 │    └── BoardEdit.jsx                  # 게시글 수정
 ├── App.jsx                             # Router 설정
 └── main.jsx
-
+```
 
 ## 🔐 Authentication & Authorization Architecture
 

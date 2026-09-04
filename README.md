@@ -193,9 +193,9 @@ cd ../..
 
 ### 3. 단일 JAR 실행
 ```bash
-java -jar target/board-0.0.1-SNAPSHOT.jar
+sudo systemctl start my-board-project
 ```
-* 브라우저에서 `http://localhost:8080` 접속 시 통합된 게시판 애플리케이션을 확인할 수 있습니다.
+* 브라우저에서 `http://100.88.187.37:83/` 접속 시 통합된 게시판 애플리케이션을 확인할 수 있습니다.
 
 ---
 

@@ -23,8 +23,16 @@ pipeline {
             steps {
                 dir("${FRONTEND_DIR}") {
                     sh '''
-                        echo "==> Node/NPM Dependencies Installation"
-                        npm install
+                        echo "==> Checking Node/NPM Dependencies"
+
+                        # package-lock.json 해시 비교를 통한 스마트 패키지 설치
+                        if [ -f "node_modules/.package-lock.hash" ] && cmp -s package-lock.json node_modules/.package-lock.hash; then
+                            echo "--> package-lock.json 변경 없음: npm ci/install 스킵"
+                        else
+                            echo "--> package-lock.json 변경 또는 node_modules 없음: npm ci 실행"
+                            npm ci --prefer-offline
+                            cp package-lock.json node_modules/.package-lock.hash
+                        fi
 
                         echo "==> Building Frontend Application (Vite)"
                         npm run build

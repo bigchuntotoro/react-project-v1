@@ -31,7 +31,7 @@ pipeline {
         stage('1. Build Frontend (React - Vite)') {
             steps {
                 dir("${FRONTEND_DIR}") {
-                    sh '''
+
                         echo "================================================="
                         echo "==> Checking Node/NPM Dependencies"
                         echo "================================================="
@@ -57,7 +57,7 @@ pipeline {
                         echo "================================================="
 
                         npm run build
-                    '''
+
                 }
             }
         }
@@ -73,7 +73,7 @@ pipeline {
                         variable: 'MAVEN_GLOBAL_SETTINGS'
                     )
                 ]) {
-                    sh '''
+
                         echo "================================================="
                         echo "==> Building Spring Boot Application"
                         echo "================================================="
@@ -81,7 +81,7 @@ pipeline {
                         mvn clean package \
                             -DskipTests \
                             -gs $MAVEN_GLOBAL_SETTINGS
-                    '''
+
                 }
             }
         }
@@ -91,7 +91,7 @@ pipeline {
         // =========================================================
         stage('3. Deploy Frontend to Nginx') {
             steps {
-                sh '''
+
                     echo "================================================="
                     echo "==> Deploying React Frontend to Nginx"
                     echo "================================================="
@@ -125,7 +125,7 @@ pipeline {
                     echo "==> Reloading Nginx"
 
                     sudo systemctl reload nginx
-                '''
+
             }
         }
 
@@ -134,7 +134,6 @@ pipeline {
         // =========================================================
         stage('4. Deploy Backend & Restart Application') {
             steps {
-                sh '''
                     echo "================================================="
                     echo "==> Preparing Spring Boot Deployment"
                     echo "================================================="
@@ -370,7 +369,6 @@ pipeline {
                     curl -i \
                         --connect-timeout 5 \
                         http://127.0.0.1:${APP_PORT}/api/boards || true
-                '''
             }
         }
     }

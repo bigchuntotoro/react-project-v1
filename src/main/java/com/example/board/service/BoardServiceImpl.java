@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -44,17 +45,19 @@ public class BoardServiceImpl implements BoardService {
     @Override
     @Transactional
     public BoardDto getBoardById(Long boardId) {
-        // 1) 조회수 증가
-        boardMapper.updateReadCount(boardId);
-
-        // 2) 게시글 상세 정보 조회
+        // 1) 게시글 상세 정보 조회
         BoardDto board = boardMapper.selectBoardById(boardId);
+        if (board == null) {
+            throw new IllegalArgumentException("존재하지 않는 게시글입니다. id: " + boardId);
+        }
+
+        // 2) 조회수 증가
+        boardMapper.updateReadCount(boardId);
+        board.setReadCnt(board.getReadCnt() + 1); // 조회 후 객체 상태 갱신
 
         // 3) 첨부파일 목록 조회 후 세팅
-        if (board != null) {
-            List<BoardFileDto> fileList = boardMapper.selectFilesByBoardId(boardId);
-            board.setFileList(fileList);
-        }
+        List<BoardFileDto> fileList = boardMapper.selectFilesByBoardId(boardId);
+        board.setFileList(fileList);
 
         return board;
     }
@@ -65,13 +68,13 @@ public class BoardServiceImpl implements BoardService {
     @Override
     @Transactional
     public void saveBoard(BoardDto boardDto, List<MultipartFile> files) {
-        // 1) 게시글 본문 DB 저장
+        // 1) 게시글 본문 DB 저장 (boardId 자동 생성)
         boardMapper.insertBoard(boardDto);
 
-        // 2) 첨부파일 디스크 저장 및 DB Bulk Insert
-        if (files != null && !files.isEmpty()) {
-            List<BoardFileDto> fileList = fileUtils.uploadFiles(files, boardDto.getBoardId());
-
+        // 2) 유효한 첨부파일 필터링 및 업로드 처리
+        List<MultipartFile> validFiles = filterValidFiles(files);
+        if (!validFiles.isEmpty()) {
+            List<BoardFileDto> fileList = fileUtils.uploadFiles(validFiles, boardDto.getBoardId());
             if (!fileList.isEmpty()) {
                 boardMapper.insertBoardFiles(fileList);
             }
@@ -89,19 +92,19 @@ public class BoardServiceImpl implements BoardService {
 
         // 2) 삭제 요청된 파일 삭제 (디스크 물리 삭제 + DB 레코드 삭제)
         if (deleteFileIds != null && !deleteFileIds.isEmpty()) {
-            List<BoardFileDto> currentFiles = boardMapper.selectFilesByBoardId(boardDto.getBoardId());
-            for (BoardFileDto file : currentFiles) {
-                if (deleteFileIds.contains(file.getFileId())) {
+            for (Long fileId : deleteFileIds) {
+                BoardFileDto file = boardMapper.selectFileById(fileId);
+                if (file != null) {
                     fileUtils.deleteFile(file.getSaveName());
                 }
             }
             boardMapper.deleteFilesByIds(deleteFileIds);
         }
 
-        // 3) 새로 추가된 파일 업로드 및 DB 저장
-        if (files != null && !files.isEmpty()) {
-            List<BoardFileDto> newFileList = fileUtils.uploadFiles(files, boardDto.getBoardId());
-
+        // 3) 새로 추가된 유효 파일 업로드 및 DB 저장
+        List<MultipartFile> validFiles = filterValidFiles(files);
+        if (!validFiles.isEmpty()) {
+            List<BoardFileDto> newFileList = fileUtils.uploadFiles(validFiles, boardDto.getBoardId());
             if (!newFileList.isEmpty()) {
                 boardMapper.insertBoardFiles(newFileList);
             }
@@ -116,17 +119,33 @@ public class BoardServiceImpl implements BoardService {
     public void deleteBoard(Long boardId) {
         // 1) 게시글에 속한 첨부파일 디스크에서 물리적 삭제
         List<BoardFileDto> files = boardMapper.selectFilesByBoardId(boardId);
-        fileUtils.deleteFiles(files);
+        if (files != null && !files.isEmpty()) {
+            fileUtils.deleteFiles(files);
+        }
 
-        // 2) 게시글 DB 삭제
+        // 2) 게시글 DB 삭제 (Cascade 설정 안되어 있는 경우 참조 파일 DB 삭제)
+        // ON DELETE CASCADE가 데이터베이스에 적용되어 있다면 reactboard만 삭제해도 reactboard_file은 자동 삭제됩니다.
         boardMapper.deleteBoard(boardId);
     }
 
     /**
-     * 7. 단일 파일 정보 조회 (다운로드 및 미리보기용) 👈 추가
+     * 7. 단일 파일 정보 조회 (다운로드 및 미리보기용)
      */
     @Override
     public BoardFileDto getFileById(Long fileId) {
         return boardMapper.selectFileById(fileId);
+    }
+
+    /**
+     * 💡 헬퍼 메서드: 빈 파일(0 bytes) 제외 필터링
+     */
+    private List<MultipartFile> filterValidFiles(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return List.of();
+        }
+        return files.stream()
+                .filter(Objects::nonNull)
+                .filter(file -> !file.isEmpty() && file.getSize() > 0)
+                .toList();
     }
 }

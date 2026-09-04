@@ -32,7 +32,7 @@ public class JwtTokenProvider {
     private String secretKey;
 
     @Value("${jwt.expiration-time}")
-    private long expirationTime; // Access Token 만료 시간 (ms)
+    private long expirationTime; // Access Token 만료 시간 (ms 단위여야 함)
 
     private long refreshTokenExpirationTime; // Refresh Token 만료 시간 (ms)
     private SecretKey key;
@@ -41,24 +41,40 @@ public class JwtTokenProvider {
     protected void init() {
         // 비밀키 초기화 (HMAC-SHA 키 생성)
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+
+        // [수정] expirationTime이 ms 단위가 아니라 '초(s)' 단위로 입력되었을 경우를 대비한 자동 감지 보정
+        // 만약 설정값이 100,000 미만(예: 3600 = 1시간)이라면 ms 단위로 변환 (* 1000)
+        if (this.expirationTime < 100000) {
+            this.expirationTime = this.expirationTime * 1000;
+        }
+
         // Refresh Token 만료 시간 = Access Token 만료 시간의 14배 (예: 1시간 기준 -> 약 14일)
-        this.refreshTokenExpirationTime = expirationTime * 14;
+        this.refreshTokenExpirationTime = this.expirationTime * 14;
+
+        log.info("JWT AccessToken 만료 시간 설정: {} ms", this.expirationTime);
     }
 
     /**
-     * 🔑 [신규] Authentication 객체 기반 Access Token + Refresh Token 동시 발급
+     * 🔑 Authentication 객체 기반 Access Token + Refresh Token 동시 발급
      */
     public TokenResponseDTO generateToken(Authentication authentication) {
         String username = extractUsername(authentication);
 
-        // 권한 정보 가져오기 (예: ROLE_USER, ROLE_ADMIN)
+        // [수정] Spring Security의 정상적인 ROLE_ 권한만 추출하도록 정제
         String authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
+                .filter(auth -> auth.startsWith("ROLE_")) // FACTOR_AUTHORIZATION_CODE 같은 임시 권한 제외
                 .collect(Collectors.joining(","));
 
-        Date now = new Date();
-        Date accessTokenValidity = new Date(now.getTime() + expirationTime);
-        Date refreshTokenValidity = new Date(now.getTime() + refreshTokenExpirationTime);
+        // 만약 정제 후 권한이 비어있다면 기본 ROLE_USER 부여
+        if (authorities.isEmpty()) {
+            authorities = "ROLE_USER";
+        }
+
+        long nowMs = System.currentTimeMillis();
+        Date now = new Date(nowMs);
+        Date accessTokenValidity = new Date(nowMs + expirationTime);
+        Date refreshTokenValidity = new Date(nowMs + refreshTokenExpirationTime);
 
         // 1. Access Token 생성
         String accessToken = Jwts.builder()
@@ -69,7 +85,7 @@ public class JwtTokenProvider {
                 .signWith(key)
                 .compact();
 
-        // 2. Refresh Token 생성 (보안을 위해 권한 정보 제외, 최소한의 정보만 바인딩)
+        // 2. Refresh Token 생성 (보안을 위해 권한 정보 제외)
         String refreshToken = Jwts.builder()
                 .subject(username)
                 .issuedAt(now)
@@ -126,9 +142,9 @@ public class JwtTokenProvider {
                     .parseSignedClaims(token);
             return true;
         } catch (ExpiredJwtException e) {
-            log.warn("만료된 JWT 토큰입니다.");
+            log.warn("만료된 JWT 토큰입니다. 만료시간: {}", e.getClaims().getExpiration());
         } catch (JwtException | IllegalArgumentException e) {
-            log.warn("유효하지 않은 JWT 토큰입니다.");
+            log.warn("유효하지 않은 JWT 토큰입니다. 원인: {}", e.getMessage());
         }
         return false;
     }
@@ -154,6 +170,9 @@ public class JwtTokenProvider {
     private String extractUsername(Authentication authentication) {
         if (authentication.getPrincipal() instanceof OAuth2User oAuth2User) {
             String email = oAuth2User.getAttribute("email");
+            if (email == null && oAuth2User.getAttribute("response") instanceof java.util.Map<?, ?> responseMap) {
+                email = (String) responseMap.get("email"); // 네이버 OAuth2 특유의 response 객체 파싱 대응
+            }
             return (email != null) ? email : authentication.getName();
         }
         return authentication.getName();

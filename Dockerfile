@@ -19,6 +19,6 @@ WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 
 # Spring Boot 실행 포트에 맞춰 설정 (기본값: 8080)
-EXPOSE 8080
+EXPOSE 8083
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

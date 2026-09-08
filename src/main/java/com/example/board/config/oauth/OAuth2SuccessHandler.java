@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -20,14 +21,12 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final JwtTokenProvider jwtTokenProvider;
 
-    @Value("${app.react-url}")
-    private String reactUrl;
+    // application.properties: app.allowed-frontend-urls=http://100.88.187.37:83,http://100.88.187.37:84,http://100.88.187.37:85
+    @Value("#{'${app.allowed-frontend-urls}'.split(',')}")
+    private List<String> allowedFrontendUrls;
 
-    @Value("${app.vue-url}")
-    private String vueUrl;
-
-    @Value("${app.default-frontend:react}")
-    private String defaultFrontend;
+    @Value("${app.default-frontend-url}")
+    private String defaultFrontendUrl;
 
     @Override
     public void onAuthenticationSuccess(
@@ -39,24 +38,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         // 1. JWT 발급
         String token = jwtTokenProvider.createToken(authentication);
 
-        // 2. 로그인 시작 시 저장한 frontend 확인
-        String frontend = getFrontendFromCookie(request);
+        // 2. 로그인 시작 시 저장한 frontend origin 확인 (예: http://100.88.187.37:84)
+        String frontendUrl = getFrontendFromCookie(request);
 
-        // 3. 허용된 frontend만 사용
-        String frontendUrl;
-
-        if ("vue".equalsIgnoreCase(frontend)) {
-            frontendUrl = vueUrl;
-        } else if ("react".equalsIgnoreCase(frontend)) {
-            frontendUrl = reactUrl;
-        } else {
-            // 잘못된 값이면 기본값 사용
-            frontendUrl = "vue".equalsIgnoreCase(defaultFrontend)
-                    ? vueUrl
-                    : reactUrl;
-        }
-
-        // 4. Frontend의 OAuth redirect 페이지로 이동
+        // 3. Frontend의 OAuth redirect 페이지로 이동
         String targetUrl = UriComponentsBuilder
                 .fromUriString(frontendUrl + "/oauth/redirect")
                 .queryParam("token", token)
@@ -64,10 +49,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .encode()
                 .toUriString();
 
-        // 5. frontend 쿠키 삭제
+        // 4. frontend 쿠키 삭제
         clearFrontendCookie(response);
 
-        // 6. Frontend로 redirect
+        // 5. Frontend로 redirect
         getRedirectStrategy().sendRedirect(
                 request,
                 response,
@@ -76,18 +61,17 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     }
 
     /**
-     * OAuth2 로그인 시작 전에 저장한 frontend 쿠키 조회
+     * OAuth2 로그인 시작 전에 저장한 frontend origin 쿠키 조회
      *
-     * 값:
-     * react
-     * vue
+     * 값 예시: http://100.88.187.37:84
+     * 화이트리스트(app.allowed-frontend-urls)에 없는 값이면 기본값 사용
      */
     private String getFrontendFromCookie(HttpServletRequest request) {
 
         Cookie[] cookies = request.getCookies();
 
         if (cookies == null) {
-            return defaultFrontend;
+            return defaultFrontendUrl;
         }
 
         for (Cookie cookie : cookies) {
@@ -96,14 +80,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
                 String value = cookie.getValue();
 
-                if ("react".equalsIgnoreCase(value)
-                        || "vue".equalsIgnoreCase(value)) {
+                if (allowedFrontendUrls.contains(value)) {
                     return value;
                 }
             }
         }
 
-        return defaultFrontend;
+        return defaultFrontendUrl;
     }
 
     /**

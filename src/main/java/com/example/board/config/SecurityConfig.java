@@ -110,6 +110,7 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "http://100.88.187.37:83",
+                "http://100.88.187.37:84",
                 "http://100.88.187.37:8083"
         ));
 

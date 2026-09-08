@@ -40,6 +40,7 @@ function BoardList() {
   // 🟢 네이버 로그인 처리 (백엔드 OAuth2 엔드포인트로 이동)
   const handleNaverLogin = () => {
     // Spring Boot Security가 제공하는 OAuth2 기본 로그인 URL
+    document.cookie = `oauth2_frontend=${window.location.origin}; Path=/; SameSite=Lax`;
     window.location.href = "/oauth2/authorization/naver";
   };
 

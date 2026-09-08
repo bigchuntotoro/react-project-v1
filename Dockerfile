@@ -1,24 +1,66 @@
-FROM eclipse-temurin:21-jdk AS builder
+# =========================================================
+# Stage 1. React Build
+# =========================================================
+FROM node:24-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Maven Wrapper 관련 파일 및 설정 복사
-COPY .mvn/ .mvn
-COPY mvnw .
+# package.json 복사
+COPY src/frontend/package*.json ./src/frontend/
+
+# React dependency 설치
+WORKDIR /app/src/frontend
+RUN npm install
+
+# React 소스 복사
+COPY src/frontend/ .
+
+# React 빌드
+# 결과:
+# /app/src/main/resources/static
+RUN npm run build
+
+
+# =========================================================
+# Stage 2. Spring Boot Build
+# =========================================================
+FROM maven:3.9-eclipse-temurin-21 AS backend-builder
+
+WORKDIR /app
+
+# Maven 프로젝트 파일
 COPY pom.xml .
 
-# 실행 권한 부여 및 빌드
-RUN chmod +x mvnw
-RUN ./mvnw clean package -DskipTests
+# dependency 다운로드 캐시
+RUN mvn dependency:go-offline -B
 
-# Run Stage
+# Backend 소스 복사
+COPY src/main ./src/main
+
+# Stage 1에서 생성된 React 빌드 결과 복사
+COPY --from=frontend-builder \
+     /app/src/main/resources/static \
+     /app/src/main/resources/static
+
+# Spring Boot 빌드
+RUN mvn clean package -DskipTests
+
+
+# =========================================================
+# Stage 3. Run
+# =========================================================
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-COPY --from=builder /app/target/*.jar app.jar
+# Spring Boot JAR
+COPY --from=backend-builder \
+     /app/target/*.jar \
+     app.jar
 
-# Spring Boot 실행 포트에 맞춰 설정 (기본값: 8080)
+# Upload 디렉터리
+RUN mkdir -p /upload
+
 EXPOSE 8083
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

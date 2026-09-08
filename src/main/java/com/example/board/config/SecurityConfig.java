@@ -61,10 +61,15 @@ public class SecurityConfig {
                         })
                 )
 
-                // 5. URL 권한 설정 (단 하나만 작성)
                 .authorizeHttpRequests(auth -> auth
                         // OPTIONS Preflight 요청 전체 허용
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 정적 리소스(React 빌드 결과) 허용 ← 추가
+                        .requestMatchers(
+                                "/", "/index.html", "/favicon.svg", "/icons.svg",
+                                "/assets/**", "/static/**"
+                        ).permitAll()
 
                         // Public endpoints
                         .requestMatchers("/public/**", "/oauth2/**", "/login/**", "/api/auth/**").permitAll()

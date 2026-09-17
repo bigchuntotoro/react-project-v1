@@ -13,16 +13,13 @@
 </template>
 
 <script setup>
-// Spring Security OAuth2 Client 사용 시
-// 기본 로그인 시작 엔드포인트는 /oauth2/authorization/{registrationId} 입니다.
-// application.yml의 spring.security.oauth2.client.registration.naver 설정과
-// registrationId("naver")가 일치해야 합니다.
-
-// 🟢 네이버 로그인 처리: 이동 전에 현재 origin을 쿠키로 저장
-// → OAuth2SuccessHandler가 로그인 완료 후 이 값(화이트리스트 검증)으로 되돌려보냄
 function handleNaverLogin() {
+  // 1. 현재 프론트엔드 origin을 쿠키에 저장 (로그인 성공 후 올바른 포트로 돌아오기 위함)
   document.cookie = `oauth2_frontend=${window.location.origin}; Path=/; SameSite=Lax`;
-  window.location.href = "/oauth2/authorization/naver";
+
+  // 2. 현재 접속 중인 호스트(localhost 또는 100.88.187.37)를 기준으로 백엔드(8083포트) 주소 동적 생성
+  const backendHost = window.location.hostname;
+  window.location.href = `http://${backendHost}:8083/oauth2/authorization/naver`;
 }
 </script>
 

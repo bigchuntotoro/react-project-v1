@@ -35,39 +35,122 @@ React 프론트엔드와 Spring Boot 백엔드가 단일 저장소(Single Reposi
 
 ```text
 my-board-project/
+├── .idea/
+├── .mvn/
+├── frontend/                               React 프론트엔드
+│   ├── node_modules/
+│   ├── public/
+│   └── src/
+│       ├── api/
+│       │   ├── axiosInstance.js
+│       │   └── boardApi.js
+│       ├── assets/
+│       ├── components/
+│       │   ├── OAuthRedirectHandler.jsx
+│       │   └── ProtectedRoute.jsx
+│       ├── pages/
+│       │   ├── BoardDetail.jsx
+│       │   ├── BoardEdit.jsx
+│       │   ├── BoardList.jsx
+│       │   └── BoardWrite.jsx
+│       ├── App.css
+│       ├── App.jsx
+│       ├── index.css
+│       └── main.jsx
+│   ├── .gitignore
+│   ├── Dockerfile
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── nginx.conf
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── README.md
+│   └── vite.config.js
+├── frontend-vue/                           Vue 프론트엔드
+│   ├── node_modules/
+│   └── src/
+│       ├── api/
+│       │   ├── boardApi.js
+│       │   └── useAuth.js
+│       ├── assets/
+│       ├── components/
+│       │   ├── Header.vue
+│       │   └── Pagination.vue
+│       ├── router/
+│       │   └── index.js
+│       ├── views/
+│       │   ├── BoardDetail.vue
+│       │   ├── BoardEdit.vue
+│       │   ├── BoardList.vue
+│       │   ├── BoardWrite.vue
+│       │   ├── Login.vue
+│       │   └── OAuthRedirect.vue
+│       ├── App.vue
+│       └── main.js
+│   ├── .gitignore
+│   ├── index.html
+│   ├── Jenkinsfile
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── README.md
+│   └── vite.config.js
+├── main/                                   백엔드 (Spring Boot) 구조
+│   └── java/
+│       └── com/
+│           └── example/
+│               └── board/
+│                   ├── config/
+│                   │   ├── jwt/
+│                   │   │   ├── JwtAuthenticationFilter.java
+│                   │   │   └── JwtTokenProvider.java
+│                   │   └── oauth/
+│                   │       ├── dto/
+│                   │       │   └── OAuthAttributes.java
+│                   │       ├── CustomOAuth2UserService.java
+│                   │       └── OAuth2SuccessHandler.java
+│                   ├── SecurityConfig.java
+│                   ├── controller/
+│                   │   ├── AuthController.java
+│                   │   └── BoardController.java
+│                   ├── dto/
+│                   │   ├── BoardDto.java
+│                   │   ├── BoardFileDto.java
+│                   │   ├── SearchDto.java
+│                   │   ├── TokenRequestDTO.java
+│                   │   └── TokenResponseDTO.java
+│                   ├── entity/
+│                   │   ├── RefreshToken.java
+│                   │   ├── Role.java
+│                   │   └── User.java
+│                   ├── mapper/
+│                   │   └── BoardMapper.java
+│                   ├── repository/
+│                   │   ├── RefreshTokenRepository.java
+│                   │   └── UserRepository.java
+│                   ├── service/
+│                   │   ├── AuthService.java
+│                   │   ├── BoardService.java
+│                   │   └── BoardServiceImpl.java
+│                   ├── util/
+│                   │   └── FileUtils.java
+│                   └── DemoApplication.java
+├── resources/                              # 백엔드 리소스 파일
+│   ├── mapper/
+│   │   └── BoardMapper.xml
+│   └── application.properties
+├── test/
+├── target/
+├── upload/
 ├── .gitignore
-├── README.md
+├── Dockerfile
+├── HELP.md
+├── Jenkinsfile
+├── mvnw
+├── mvnw.cmd
 ├── pom.xml
-└── src/
-    ├── main/
-    │   ├── java/com/example/board/
-    │   │   ├── BoardApplication.java
-    │   │   ├── controller/
-    │   │   │   └── BoardController.java
-    │   │   ├── dto/
-    │   │   │   ├── BoardDto.java
-    │   │   │   ├── BoardFileDto.java
-    │   │   │   └── SearchDto.java
-    │   │   ├── mapper/
-    │   │   │   └── BoardMapper.java
-    │   │   └── service/
-    │   │       └── BoardService.java
-    │   └── resources/
-    │       ├── application.yml
-    │       ├── mapper/
-    │       │   └── BoardMapper.xml
-    │       └── static/            # React 빌드 결과물 자동 생성 위치
-    └── frontend/                  # React 프로젝트
-        ├── package.json
-        ├── public/
-        └── src/
-            ├── App.js
-            ├── index.js
-            └── pages/
-                ├── BoardDetail.js
-                ├── BoardEdit.js
-                ├── BoardList.js
-                └── BoardWrite.js
+└── README.md
+
+
 ```
 
 ---
